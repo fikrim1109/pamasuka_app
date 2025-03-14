@@ -61,7 +61,7 @@ class _LoginPageState extends State<LoginPage> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.red, Colors.deepOrange],
+            colors: [Color.fromARGB(255, 247, 18, 18), Color.fromARGB(255, 225, 12, 12)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -73,7 +73,7 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
-                  'Champions',
+                  'Samalona',
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -112,7 +112,7 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: _login,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          foregroundColor: Colors.red,
+                          foregroundColor: const Color.fromARGB(255, 0, 0, 0),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 50, vertical: 16),
                           shape: RoundedRectangleBorder(

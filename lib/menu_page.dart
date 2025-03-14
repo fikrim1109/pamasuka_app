@@ -17,8 +17,8 @@ class MenuPage extends StatelessWidget {
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Color.fromARGB(255, 211, 10, 20),
-              Color.fromARGB(255, 157, 13, 64)
+              Color.fromARGB(255, 226, 15, 15),
+              Color(0xFFD80A0A)
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -42,7 +42,7 @@ class MenuPage extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
+                        color: Color.fromARGB(255, 0, 0, 0),
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -66,7 +66,7 @@ class MenuPage extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          backgroundColor: Colors.redAccent,
+                          backgroundColor: const Color(0xFFE2E2E2),
                         ),
                         child: const Text(
                           'Isi Data',
@@ -91,7 +91,7 @@ class MenuPage extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          backgroundColor: Colors.red,
+                          backgroundColor: const Color(0xFFE2E2E2),
                         ),
                         child: const Text(
                           'Logout',

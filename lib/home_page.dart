@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
@@ -27,6 +28,8 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     // Isi field nama otomatis dengan username dari login
     _namaController.text = widget.username;
+    // Isi field toko dengan tanggal hari ini otomatis
+    _tokoController.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
     _fetchAreas();
   }
 
@@ -85,9 +88,11 @@ class _HomePageState extends State<HomePage> {
     String? hint,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
+    bool readOnly = false,
   }) {
     return TextFormField(
       controller: controller,
+      readOnly: readOnly,
       keyboardType: keyboardType,
       validator: validator,
       decoration: InputDecoration(
@@ -112,8 +117,8 @@ class _HomePageState extends State<HomePage> {
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Color(0xFFD30A14),
-              Color(0xFF9D0D40)
+              Color(0xFFF71212),
+              Color.fromARGB(255, 229, 14, 14)
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -173,26 +178,20 @@ class _HomePageState extends State<HomePage> {
                         },
                       ),
                       const SizedBox(height: 16),
+                      // Field Toko diisi otomatis dengan tanggal hari ini
                       _buildTextField(
                         controller: _tokoController,
-                        label: 'Nama Toko',
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter store name';
-                          }
-                          return null;
-                        },
+                        label: 'Tanggal',
+                        readOnly: true,
                       ),
                       const SizedBox(height: 16),
+                      // Field "Jumlah Unit" diubah menjadi "Brandingan"
                       _buildTextField(
                         controller: _unitController,
-                        label: 'Jumlah Unit',
-                        keyboardType: TextInputType.number,
+                        label: 'Brandingan',
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Please enter number of units';
-                          } else if (int.tryParse(value) == null) {
-                            return 'Please enter a valid number';
+                            return 'Please enter brandingan';
                           }
                           return null;
                         },
@@ -206,7 +205,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           const Spacer(),
                           IconButton(
-                            icon: const Icon(Icons.camera_alt, color: Colors.deepPurple),
+                            icon: const Icon(Icons.camera_alt, color: Color.fromARGB(255, 0, 0, 0)),
                             onPressed: () => _pickImage(ImageSource.camera),
                           ),
                           // Uncomment jika ingin menambahkan opsi gallery:
@@ -241,7 +240,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           child: const Text(
                             'Submit',
-                            style: TextStyle(fontSize: 18),
+                            style: TextStyle(fontSize: 18, color: Colors.black),
                           ),
                         ),
                       ),
