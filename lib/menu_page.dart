@@ -69,7 +69,7 @@ class MenuPage extends StatelessWidget {
                           backgroundColor: const Color(0xFFE2E2E2),
                         ),
                         child: const Text(
-                          'Isi Data',
+                          'Visit Oulet PJP',
                           style: TextStyle(fontSize: 18),
                         ),
                       ),
