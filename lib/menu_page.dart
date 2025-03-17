@@ -46,11 +46,11 @@ class MenuPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 32),
+                    // Tombol Visit Outlet PJP
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          // Navigasi ke halaman isi data (HomePage)
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -69,17 +69,47 @@ class MenuPage extends StatelessWidget {
                           backgroundColor: const Color(0xFFE2E2E2),
                         ),
                         child: const Text(
-                          'Visit Oulet PJP',
+                          'Visit Outlet PJP',
                           style: TextStyle(fontSize: 18),
                         ),
                       ),
                     ),
                     const SizedBox(height: 16),
+                    // Tombol Visit Outlet Non PJP (Baru)
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          // Navigasi ke halaman login (logout)
+                          // Navigasi ke halaman yang sama atau berbeda
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => HomePage(
+                                username: username,
+                                userId: userId,
+                              ),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          backgroundColor: const Color(0xFFE2E2E2),
+                        ),
+                        child: const Text(
+                          'Visit Outlet Non PJP',
+                          style: TextStyle(fontSize: 18),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Tombol Logout
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
                           Navigator.pushAndRemoveUntil(
                             context,
                             MaterialPageRoute(builder: (context) => const LoginPage()),
