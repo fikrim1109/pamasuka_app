@@ -7,26 +7,39 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
-class HomePage extends StatefulWidget {
+class RumahPage extends StatefulWidget {
   final String username;
   final int userId;
-  const HomePage({Key? key, required this.username, required this.userId}) : super(key: key);
+  const RumahPage({Key? key, required this.username, required this.userId})
+      : super(key: key);
+
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<RumahPage> createState() => _RumahPageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _RumahPageState extends State<RumahPage> {
   // Controllers untuk field utama
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _namaController = TextEditingController();
   final TextEditingController _tokoController = TextEditingController();
-
-  // Untuk dropdown outlet
-  List<Map<String, dynamic>> _outlets = [];
-  String? _selectedOutletId;
-  Map<String, dynamic>? _selectedOutlet;
+  // Field outlet input manual
+  final TextEditingController _outletController = TextEditingController();
+  // Controller untuk ID Outlet (sekarang input manual dengan default value)
+  final TextEditingController _idOutletController = TextEditingController();
 
   bool _isLoading = false;
+
+  // Dropdown untuk Hari Kunjungan (pilihan Senin s.d. Minggu)
+  String? _selectedHariKunjungan;
+  final List<String> _hariOptions = [
+    "Senin",
+    "Selasa",
+    "Rabu",
+    "Kamis",
+    "Jumat",
+    "Sabtu",
+    "Minggu"
+  ];
 
   // Opsi survey tipe (Brandingan)
   String? _selectedBrandinganOption;
@@ -49,49 +62,14 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    // Nama otomatis dari parameter
     _namaController.text = widget.username;
+    // Tanggal otomatis (format: yyyy-MM-dd)
     _tokoController.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    _fetchOutlets();
-  }
-
-  Future<void> _fetchOutlets() async {
-    setState(() {
-      _isLoading = true;
-    });
-    try {
-      var url = Uri.parse(
-          'http://10.0.2.2/test%20api/getAreas.php?user_id=${widget.userId}');
-      var response = await http.get(url);
-      print("Response body: ${response.body}");
-      
-      if (response.statusCode == 200) {
-        var data = json.decode(response.body);
-        print("Decoded data: $data");
-        if (data['success'] == true && data['outlets'] is List) {
-          setState(() {
-            _outlets = List<Map<String, dynamic>>.from(data['outlets'] as List<dynamic>);
-            print("Outlets loaded: ${_outlets.length}");
-          });
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? 'Gagal mengambil data outlet')),
-          );
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal mengambil data outlet')),
-        );
-      }
-    } catch (e) {
-      print("Error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    // ID Outlet default diisi dengan tanggal (misalnya: yyyyMMdd) tetapi bisa diedit
+    _idOutletController.text = DateFormat('yyyyMMdd').format(DateTime.now());
+    // Hari Kunjungan default diisi dengan nama hari (tetapi user bisa memilih dari dropdown)
+    _selectedHariKunjungan = DateFormat('EEEE', 'id_ID').format(DateTime.now());
   }
 
   Future<void> _pickImage(ImageSource source, Function(File) onImagePicked) async {
@@ -105,7 +83,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _submitForm() async {
-    if (!_formKey.currentState!.validate() || _selectedOutlet == null) return;
+    // Validasi form dan outlet (harus diisi)
+    if (!_formKey.currentState!.validate() ||
+        _outletController.text.trim().isEmpty ||
+        _idOutletController.text.trim().isEmpty ||
+        _selectedHariKunjungan == null) return;
 
     // Validasi untuk opsi survey
     if (_selectedBrandinganOption == null) {
@@ -229,6 +211,7 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Container(
         decoration: const BoxDecoration(
+          // Menggunakan gradient yang sama seperti sebelumnya (bisa diubah jika diperlukan)
           gradient: LinearGradient(
             colors: [
               Color(0xFFF71212),
@@ -253,7 +236,7 @@ class _HomePageState extends State<HomePage> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Field Nama
+                            // Field Nama (otomatis)
                             _buildTextField(
                               controller: _namaController,
                               label: 'Nama',
@@ -265,61 +248,58 @@ class _HomePageState extends State<HomePage> {
                               },
                             ),
                             const SizedBox(height: 16),
-                            // Dropdown Pilih Outlet
-                            DropdownButtonFormField<String>(
-                              isExpanded: true,
-                              value: _selectedOutletId,
-                              hint: const Text("Pilih Outlet"),
-                              decoration: InputDecoration(
-                                labelText: 'Pilih Outlet',
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              ),
-                              items: _outlets.map((outlet) {
-                                return DropdownMenuItem<String>(
-                                  value: outlet['id_outlet'].toString(),
-                                  child: Text(outlet['nama_outlet'] ?? ''),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedOutletId = value;
-                                  if (value != null) {
-                                    _selectedOutlet = _outlets.firstWhere(
-                                      (outlet) => outlet['id_outlet'].toString() == value,
-                                      orElse: () => {},
-                                    );
-                                  }
-                                });
-                              },
+                            // Text field untuk Outlet (input manual)
+                            _buildTextField(
+                              controller: _outletController,
+                              label: 'Outlet',
+                              hint: 'Masukkan nama outlet',
                               validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please select an outlet';
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter outlet';
                                 }
                                 return null;
                               },
                             ),
                             const SizedBox(height: 16),
-                            // Tampilkan detail outlet: ID Outlet dan Hari Kunjungan
-                            if (_selectedOutlet != null && _selectedOutlet!.isNotEmpty) ...[
-                              _buildTextField(
-                                controller: TextEditingController(text: _selectedOutlet?['id_outlet'].toString() ?? ''),
-                                label: 'ID Outlet',
-                                readOnly: true,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildTextField(
-                                controller: TextEditingController(text: _selectedOutlet?['hari'] ?? ''),
-                                label: 'Hari Kunjungan',
-                                readOnly: true,
-                              ),
-                              const SizedBox(height: 16),
-                            ],
-                            // Field Tanggal
+                            // Field ID Outlet (input manual)
+                            _buildTextField(
+                              controller: _idOutletController,
+                              label: 'ID Outlet',
+                              hint: 'Masukkan ID Outlet',
+                            ),
+                            const SizedBox(height: 16),
+                            // Field Tanggal (otomatis)
                             _buildTextField(
                               controller: _tokoController,
                               label: 'Tanggal',
                               readOnly: true,
+                            ),
+                            const SizedBox(height: 16),
+                            // Dropdown untuk Hari Kunjungan
+                            DropdownButtonFormField<String>(
+                              value: _selectedHariKunjungan,
+                              decoration: InputDecoration(
+                                labelText: 'Hari Kunjungan',
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              ),
+                              items: _hariOptions.map((hari) {
+                                return DropdownMenuItem<String>(
+                                  value: hari,
+                                  child: Text(hari),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedHariKunjungan = value;
+                                });
+                              },
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please select a day';
+                                }
+                                return null;
+                              },
                             ),
                             const SizedBox(height: 16),
                             // Dropdown Jenis Survey (Brandingan)
@@ -416,7 +396,7 @@ class _HomePageState extends State<HomePage> {
                                         },
                                       ),
                                       const SizedBox(height: 16),
-                                      // TextField untuk Keterangan (baru, di atas harga)
+                                      // TextField untuk Keterangan (di atas harga)
                                       _buildTextField(
                                         controller: TextEditingController(text: _surveyHargaEntries[index]["keterangan"]),
                                         label: 'Keterangan',
