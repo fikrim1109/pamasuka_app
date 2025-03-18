@@ -6,12 +6,13 @@ import 'login_page.dart';
 class MenuPage extends StatelessWidget {
   final String username;
   final int userId;
-  const MenuPage({Key? key, required this.username, required this.userId}) : super(key: key);
+  const MenuPage({Key? key, required this.username, required this.userId})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // Warna merah soft yang dipilih (tanpa gradient)
-    final Color softRed = const Color(0xFFF71212); // Light Salmon
+    // Warna latar belakang merah (tanpa gradient) yang digunakan
+    final Color softRed = const Color(0xFFF71212);
 
     return Scaffold(
       appBar: AppBar(
@@ -26,19 +27,23 @@ class MenuPage extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 2,
       ),
+      // Bagian body menggunakan latar belakang warna merah
       body: Container(
-        color: softRed, // Latar belakang dengan warna merah soft
+        color: softRed,
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Card(
               elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Teks sambutan yang menampilkan nama user
                     Text(
                       'Selamat datang, $username!',
                       style: const TextStyle(
@@ -49,7 +54,7 @@ class MenuPage extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 20),
-                    // Area logo (placeholder) – ganti dengan image asset atau network image sesuai kebutuhan
+                    // Area logo (placeholder). Ganti dengan asset gambar atau gambar dari internet jika diperlukan.
                     Container(
                       width: 150,
                       height: 150,
@@ -83,6 +88,7 @@ class MenuPage extends StatelessWidget {
           ),
         ),
       ),
+      // Bagian navbar (navigasi bawah)
       bottomNavigationBar: BottomNavBar(username: username, userId: userId),
       backgroundColor: Colors.white,
     );
@@ -93,41 +99,48 @@ class BottomNavBar extends StatelessWidget {
   final String username;
   final int userId;
 
-  const BottomNavBar({Key? key, required this.username, required this.userId}) : super(key: key);
+  const BottomNavBar({Key? key, required this.username, required this.userId})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white, // Navbar dengan background putih
+      color: Colors.white, // Latar belakang navbar berwarna putih
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Garis pemisah antara konten dan navbar
           const Divider(height: 1, color: Colors.grey),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
+              // Tombol navigasi untuk halaman Outlet PJP
               _NavBarItem(
                 label: 'Outlet PJP',
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => HomePage(username: username, userId: userId),
+                      builder: (context) =>
+                          HomePage(username: username, userId: userId),
                     ),
                   );
                 },
               ),
+              // Tombol navigasi untuk halaman Outlet Non PJP (mengarah ke RumahPage)
               _NavBarItem(
                 label: 'Outlet Non PJP',
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => RumahPage(username: username, userId: userId),
+                      builder: (context) =>
+                          RumahPage(username: username, userId: userId),
                     ),
                   );
                 },
               ),
+              // Tombol navigasi untuk Logout
               _NavBarItem(
                 label: 'Logout',
                 onTap: () {
@@ -150,7 +163,8 @@ class BottomNavBar extends StatelessWidget {
 class _NavBarItem extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
-  const _NavBarItem({Key? key, required this.label, required this.onTap}) : super(key: key);
+  const _NavBarItem({Key? key, required this.label, required this.onTap})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Untuk input formatter
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
@@ -10,29 +9,31 @@ import 'package:http/http.dart' as http;
 class HomePage extends StatefulWidget {
   final String username;
   final int userId;
-  const HomePage({Key? key, required this.username, required this.userId}) : super(key: key);
+  const HomePage({super.key, required this.username, required this.userId});
+
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  // Controllers untuk field utama
+  // Form key untuk validasi form
   final _formKey = GlobalKey<FormState>();
+  // Controller untuk field nama dan tanggal
   final TextEditingController _namaController = TextEditingController();
   final TextEditingController _tokoController = TextEditingController();
 
-  // Untuk dropdown outlet
+  // Variabel untuk dropdown outlet
   List<Map<String, dynamic>> _outlets = [];
   String? _selectedOutletId;
   Map<String, dynamic>? _selectedOutlet;
 
   bool _isLoading = false;
 
-  // Opsi survey tipe (Brandingan)
+  // Variabel untuk opsi jenis survei
   String? _selectedBrandinganOption;
-  final List<String> _brandinganOptions = ["Surver branding", "Survei harga"];
+  final List<String> _brandinganOptions = ["Survei branding", "Survei harga"];
 
-  // Untuk opsi "Surver branding": 2 gambar
+  // Untuk opsi "Survei branding": dua gambar
   File? _brandingImageEtalase;
   File? _brandingImageTampakDepan;
 
@@ -43,34 +44,37 @@ class _HomePageState extends State<HomePage> {
   ];
   final List<String> _kompetitorOptions = ["xl", "indosat ooredo", "axis", "smartfren"];
 
-  // Untuk keterangan kunjungan (paragraf panjang)
+  // Controller untuk keterangan kunjungan (paragraf panjang)
   final TextEditingController _keteranganController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    // Set nilai awal nama sesuai parameter user
     _namaController.text = widget.username;
+    // Set nilai tanggal otomatis dengan format yyyy-MM-dd
     _tokoController.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    // Ambil data outlet dari API
     _fetchOutlets();
   }
 
+  // Fungsi untuk mengambil data outlet dari API
   Future<void> _fetchOutlets() async {
     setState(() {
       _isLoading = true;
     });
     try {
-      var url = Uri.parse(
-          'http://10.0.2.2/test%20api/getAreas.php?user_id=${widget.userId}');
+      var url = Uri.parse('http://10.0.2.2/test%20api/getAreas.php?user_id=${widget.userId}');
       var response = await http.get(url);
       print("Response body: ${response.body}");
-      
+
       if (response.statusCode == 200) {
         var data = json.decode(response.body);
         print("Decoded data: $data");
         if (data['success'] == true && data['outlets'] is List) {
           setState(() {
             _outlets = List<Map<String, dynamic>>.from(data['outlets'] as List<dynamic>);
-            print("Outlets loaded: ${_outlets.length}");
+            print("Outlets dimuat: ${_outlets.length}");
           });
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -85,7 +89,7 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       print("Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text('Terjadi kesalahan: $e')),
       );
     } finally {
       setState(() {
@@ -94,6 +98,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // Fungsi untuk mengambil gambar dari kamera atau galeri
   Future<void> _pickImage(ImageSource source, Function(File) onImagePicked) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: source);
@@ -104,42 +109,44 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // Fungsi untuk validasi dan submit form
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate() || _selectedOutlet == null) return;
 
-    // Validasi untuk opsi survey
+    // Validasi pilihan jenis survei
     if (_selectedBrandinganOption == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select survey type')),
+        const SnackBar(content: Text('Silakan pilih jenis survei')),
       );
       return;
     }
-    if (_selectedBrandinganOption == "Surver branding") {
+    // Jika jenis survei adalah "Survei branding", pastikan kedua gambar telah diambil
+    if (_selectedBrandinganOption == "Survei branding") {
       if (_brandingImageEtalase == null || _brandingImageTampakDepan == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please take both branding images')),
+          const SnackBar(content: Text('Silakan ambil kedua gambar branding')),
         );
         return;
       }
     } else if (_selectedBrandinganOption == "Survei harga") {
-      // Pastikan setiap entri di survey harga diisi lengkap
+      // Pastikan semua entri survei harga telah diisi dengan lengkap
       for (var entry in _surveyHargaEntries) {
         if ((entry["kompetitor"] ?? "").trim().isEmpty ||
             (entry["harga"] ?? "").trim().isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please complete all survey harga entries')),
+            const SnackBar(content: Text('Silakan lengkapi semua entri survei harga')),
           );
           return;
         }
       }
     }
 
-    // Jika validasi lolos, tampilkan dialog sukses (placeholder)
+    // Jika validasi berhasil, tampilkan dialog sukses (placeholder)
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Success!'),
-        content: const Text('Data submitted successfully (placeholder)'),
+        title: const Text('Berhasil!'),
+        content: const Text('Data berhasil dikirim (placeholder)'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -150,7 +157,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // _buildTextField dengan dukungan onChanged dan input formatter tambahan
+  // Widget untuk membangun TextField dengan properti yang dapat disesuaikan
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -160,29 +167,30 @@ class _HomePageState extends State<HomePage> {
     bool readOnly = false,
     int maxLines = 1,
     Function(String)? onChanged,
-    List<TextInputFormatter>? inputFormatters,
-    String? prefixText,
   }) {
     return TextFormField(
       controller: controller,
       readOnly: readOnly,
       keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
       validator: validator,
       maxLines: maxLines,
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixText: prefixText,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     );
   }
 
-  // Widget untuk image picker (untuk branding)
-  Widget _buildImagePicker({required String label, File? image, required VoidCallback onPick, required VoidCallback onRetake}) {
+  // Widget untuk menampilkan image picker (untuk pengambilan gambar branding)
+  Widget _buildImagePicker({
+    required String label,
+    File? image,
+    required VoidCallback onPick,
+    required VoidCallback onRetake,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -224,11 +232,12 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Survey Form'),
+        title: const Text('Form Survei'),
         centerTitle: true,
       ),
       body: Container(
         decoration: const BoxDecoration(
+          // Background menggunakan gradient merah
           gradient: LinearGradient(
             colors: [
               Color(0xFFF71212),
@@ -253,19 +262,19 @@ class _HomePageState extends State<HomePage> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Field Nama
+                            // Field Nama (otomatis diisi)
                             _buildTextField(
                               controller: _namaController,
                               label: 'Nama',
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
-                                  return 'Please enter your name';
+                                  return 'Silakan masukkan nama Anda';
                                 }
                                 return null;
                               },
                             ),
                             const SizedBox(height: 16),
-                            // Dropdown Pilih Outlet
+                            // Dropdown untuk memilih Outlet
                             DropdownButtonFormField<String>(
                               isExpanded: true,
                               value: _selectedOutletId,
@@ -294,13 +303,13 @@ class _HomePageState extends State<HomePage> {
                               },
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Please select an outlet';
+                                  return 'Silakan pilih outlet';
                                 }
                                 return null;
                               },
                             ),
                             const SizedBox(height: 16),
-                            // Tampilkan detail outlet: ID Outlet dan Hari Kunjungan
+                            // Tampilkan detail outlet: ID Outlet dan Hari Kunjungan (read-only) jika tersedia
                             if (_selectedOutlet != null && _selectedOutlet!.isNotEmpty) ...[
                               _buildTextField(
                                 controller: TextEditingController(text: _selectedOutlet?['id_outlet'].toString() ?? ''),
@@ -315,20 +324,20 @@ class _HomePageState extends State<HomePage> {
                               ),
                               const SizedBox(height: 16),
                             ],
-                            // Field Tanggal
+                            // Field Tanggal (otomatis)
                             _buildTextField(
                               controller: _tokoController,
                               label: 'Tanggal',
                               readOnly: true,
                             ),
                             const SizedBox(height: 16),
-                            // Dropdown Jenis Survey (Brandingan)
+                            // Dropdown untuk memilih jenis survei
                             DropdownButtonFormField<String>(
                               isExpanded: true,
                               value: _selectedBrandinganOption,
-                              hint: const Text("Pilih Jenis Survey"),
+                              hint: const Text("Pilih Jenis Survei"),
                               decoration: InputDecoration(
-                                labelText: 'Jenis Survey',
+                                labelText: 'Jenis Survei',
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                               ),
@@ -341,7 +350,7 @@ class _HomePageState extends State<HomePage> {
                               onChanged: (value) {
                                 setState(() {
                                   _selectedBrandinganOption = value;
-                                  // Reset data survey harga atau branding
+                                  // Reset data survei harga atau branding ketika jenis survei berganti
                                   _brandingImageEtalase = null;
                                   _brandingImageTampakDepan = null;
                                   _surveyHargaEntries = [
@@ -351,14 +360,14 @@ class _HomePageState extends State<HomePage> {
                               },
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Please select survey type';
+                                  return 'Silakan pilih jenis survei';
                                 }
                                 return null;
                               },
                             ),
                             const SizedBox(height: 16),
-                            // Jika opsi survey adalah "Surver branding"
-                            if (_selectedBrandinganOption == "Surver branding") ...[
+                            // Jika jenis survei adalah "Survei branding"
+                            if (_selectedBrandinganOption == "Survei branding") ...[
                               _buildImagePicker(
                                 label: "Foto Etalase",
                                 image: _brandingImageEtalase,
@@ -374,9 +383,9 @@ class _HomePageState extends State<HomePage> {
                               ),
                               const SizedBox(height: 16),
                             ],
-                            // Jika opsi survey adalah "Survei harga"
+                            // Jika jenis survei adalah "Survei harga"
                             if (_selectedBrandinganOption == "Survei harga") ...[
-                              // Daftar entri survey harga dinamis
+                              // Daftar entri untuk survei harga secara dinamis
                               ListView.builder(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
@@ -385,12 +394,12 @@ class _HomePageState extends State<HomePage> {
                                   return Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      // Dropdown Kompetitor untuk entri ini
+                                      // Dropdown untuk memilih kompetitor
                                       DropdownButtonFormField<String>(
                                         isExpanded: true,
-                                        value: ((_surveyHargaEntries[index]["kompetitor"] ?? "").trim().isEmpty
+                                        value: ((_surveyHargaEntries[index]["kompetitor"] ?? "") as String).trim().isEmpty
                                             ? null
-                                            : _surveyHargaEntries[index]["kompetitor"]) as String?,
+                                            : _surveyHargaEntries[index]["kompetitor"],
                                         hint: const Text("Pilih Kompetitor"),
                                         decoration: InputDecoration(
                                           labelText: 'Kompetitor',
@@ -410,13 +419,13 @@ class _HomePageState extends State<HomePage> {
                                         },
                                         validator: (value) {
                                           if (value == null || value.isEmpty) {
-                                            return 'Please select a kompetitor';
+                                            return 'Silakan pilih kompetitor';
                                           }
                                           return null;
                                         },
                                       ),
                                       const SizedBox(height: 16),
-                                      // TextField untuk Keterangan (baru, di atas harga)
+                                      // TextField untuk keterangan harga (di atas input harga)
                                       _buildTextField(
                                         controller: TextEditingController(text: _surveyHargaEntries[index]["keterangan"]),
                                         label: 'Keterangan',
@@ -425,25 +434,23 @@ class _HomePageState extends State<HomePage> {
                                         },
                                       ),
                                       const SizedBox(height: 16),
-                                      // TextField untuk Harga dengan prefix "Rp. " dan hanya menerima angka dan titik
+                                      // TextField untuk memasukkan harga
                                       _buildTextField(
                                         controller: TextEditingController(text: _surveyHargaEntries[index]["harga"]),
                                         label: 'Masukkan Harga',
                                         keyboardType: TextInputType.number,
-                                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                                        prefixText: 'Rp. ',
                                         onChanged: (val) {
                                           _surveyHargaEntries[index]["harga"] = val;
                                         },
                                         validator: (value) {
                                           if (value == null || value.trim().isEmpty) {
-                                            return 'Please enter harga';
+                                            return 'Silakan masukkan harga';
                                           }
                                           return null;
                                         },
                                       ),
                                       const SizedBox(height: 16),
-                                      // Tombol hapus data jika lebih dari 1 entri
+                                      // Tombol untuk menghapus entri (jika lebih dari 1)
                                       if (_surveyHargaEntries.length > 1)
                                         Align(
                                           alignment: Alignment.centerRight,
@@ -482,13 +489,13 @@ class _HomePageState extends State<HomePage> {
                               maxLines: 5,
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
-                                  return 'Please enter keterangan kunjungan';
+                                  return 'Silakan masukkan keterangan kunjungan';
                                 }
                                 return null;
                               },
                             ),
                             const SizedBox(height: 16),
-                            // Tombol Submit
+                            // Tombol Submit untuk mengirim data
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
