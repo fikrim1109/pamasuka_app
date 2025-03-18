@@ -13,30 +13,24 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  // Controller untuk input username dan password
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  
-  // Variabel untuk menampilkan indikator loading
   bool _isLoading = false;
 
-  /// Fungsi login: mengirimkan username dan password ke API
   Future<void> _login() async {
     setState(() {
       _isLoading = true;
     });
-    // URL API login (sesuaikan dengan folder "test api" di XAMPP)
+
     var url = Uri.parse('http://10.0.2.2/test%20api/login.php');
-    // Mengirim data login dengan metode POST
     var response = await http.post(url, body: {
       'username': _usernameController.text,
       'password': _passwordController.text,
     });
+
     if (response.statusCode == 200) {
       var data = json.decode(response.body);
-      // Contoh respons API: { "success": true, "userId": 1, "username": "User1" }
       if (data['success'] == true) {
-        // Jika login berhasil, navigasi ke MenuPage dengan meneruskan data user
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -47,17 +41,16 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
       } else {
-        // Tampilkan pesan error jika login gagal
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login gagal, periksa username dan password Anda')),
         );
       }
     } else {
-      // Tampilkan pesan error jika terjadi kesalahan koneksi ke server
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Terjadi kesalahan koneksi ke server')),
       );
     }
+
     setState(() {
       _isLoading = false;
     });
@@ -66,13 +59,12 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Tampilan login dengan latar belakang gradasi merah
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
               Color.fromARGB(255, 247, 18, 18),
-              Color.fromARGB(255, 225, 12, 12)
+              Color.fromARGB(255, 225, 12, 12),
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -84,16 +76,25 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
-                  'Samalonian APP',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                // **Logo Aplikasi**
+                Image.asset(
+                  'images/Samalonian APP.png',
+                  height: 220,
                 ),
-                const SizedBox(height: 32),
-                // Field input untuk Username
+                const SizedBox(height: 16),
+
+                // // **Nama Aplikasi**
+                // const Text(
+                //   'Samalonian APP',
+                //   style: TextStyle(
+                //     fontSize: 32,
+                //     fontWeight: FontWeight.bold,
+                //     color: Colors.white,
+                //   ),
+                // ),
+                // const SizedBox(height: 32),
+
+                // **Input Username**
                 TextField(
                   controller: _usernameController,
                   decoration: InputDecoration(
@@ -106,7 +107,8 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Field input untuk Password
+
+                // **Input Password**
                 TextField(
                   controller: _passwordController,
                   obscureText: true,
@@ -120,14 +122,15 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                // Tampilkan indikator loading jika sedang memproses, jika tidak, tampilkan tombol Login
+
+                // **Tombol Login / Loading**
                 _isLoading
                     ? const CircularProgressIndicator()
                     : ElevatedButton(
                         onPressed: _login,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          foregroundColor: const Color.fromARGB(255, 0, 0, 0),
+                          foregroundColor: Colors.black,
                           padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),

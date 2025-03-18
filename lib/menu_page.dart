@@ -11,7 +11,6 @@ class MenuPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Warna latar belakang merah (tanpa gradient) yang digunakan
     final Color softRed = const Color(0xFFF71212);
 
     return Scaffold(
@@ -27,7 +26,6 @@ class MenuPage extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 2,
       ),
-      // Bagian body menggunakan latar belakang warna merah
       body: Container(
         color: softRed,
         child: Center(
@@ -36,14 +34,15 @@ class MenuPage extends StatelessWidget {
             child: Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              color: Colors.white, // Mengatur warna latar belakang putih
               child: Padding(
                 padding:
                     const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Teks sambutan yang menampilkan nama user
                     Text(
                       'Selamat datang, $username!',
                       style: const TextStyle(
@@ -54,31 +53,12 @@ class MenuPage extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 20),
-                    // Area logo (placeholder). Ganti dengan asset gambar atau gambar dari internet jika diperlukan.
-                    Container(
-                      width: 150,
-                      height: 150,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                        border: Border.all(color: Colors.red, width: 2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'Logo',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
+                    SizedBox(
+                      width: 200,
+                      height: 200,
+                      child: Image.asset(
+                        'images/Samalonian APP.png',
+                        fit: BoxFit.cover,
                       ),
                     ),
                   ],
@@ -88,7 +68,6 @@ class MenuPage extends StatelessWidget {
           ),
         ),
       ),
-      // Bagian navbar (navigasi bawah)
       bottomNavigationBar: BottomNavBar(username: username, userId: userId),
       backgroundColor: Colors.white,
     );
@@ -105,16 +84,14 @@ class BottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white, // Latar belakang navbar berwarna putih
+      color: Colors.white,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Garis pemisah antara konten dan navbar
-          const Divider(height: 1, color: Colors.grey),
+          const Divider(height: 1, color: Color.fromARGB(255, 252, 252, 252)),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              // Tombol navigasi untuk halaman Outlet PJP
               _NavBarItem(
                 label: 'Outlet PJP',
                 onTap: () {
@@ -127,7 +104,6 @@ class BottomNavBar extends StatelessWidget {
                   );
                 },
               ),
-              // Tombol navigasi untuk halaman Outlet Non PJP (mengarah ke RumahPage)
               _NavBarItem(
                 label: 'Outlet Non PJP',
                 onTap: () {
@@ -140,7 +116,6 @@ class BottomNavBar extends StatelessWidget {
                   );
                 },
               ),
-              // Tombol navigasi untuk Logout
               _NavBarItem(
                 label: 'Logout',
                 onTap: () {
@@ -171,7 +146,7 @@ class _NavBarItem extends StatelessWidget {
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        splashColor: Colors.red.shade100,
+        splashColor: const Color.fromARGB(255, 243, 243, 243),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Text(
