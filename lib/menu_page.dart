@@ -16,7 +16,7 @@ class MenuPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'samalonian APP',
+          'Samalonian APP',
           style: TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
