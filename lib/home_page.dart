@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
@@ -167,16 +168,20 @@ class _HomePageState extends State<HomePage> {
     bool readOnly = false,
     int maxLines = 1,
     Function(String)? onChanged,
+    List<TextInputFormatter>? inputFormatters,
+    String? prefixText,
   }) {
     return TextFormField(
       controller: controller,
       readOnly: readOnly,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       validator: validator,
       maxLines: maxLines,
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
+        prefixText: prefixText,
         hintText: hint,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -439,6 +444,8 @@ class _HomePageState extends State<HomePage> {
                                         controller: TextEditingController(text: _surveyHargaEntries[index]["harga"]),
                                         label: 'Masukkan Harga',
                                         keyboardType: TextInputType.number,
+                                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                                        prefixText: 'Rp.',
                                         onChanged: (val) {
                                           _surveyHargaEntries[index]["harga"] = val;
                                         },
