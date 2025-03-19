@@ -10,7 +10,7 @@ import 'package:http/http.dart' as http;
 class HomePage extends StatefulWidget {
   final String username;
   final int userId;
-  const HomePage({super.key, required this.username, required this.userId});
+  const HomePage({Key? key, required this.username, required this.userId}) : super(key: key);
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -314,11 +314,29 @@ class _HomePageState extends State<HomePage> {
                               },
                             ),
                             const SizedBox(height: 16),
-                            // Tampilkan detail outlet: ID Outlet dan Hari Kunjungan (read-only) jika tersedia
+                            // Tampilkan detail outlet: ID Outlet, Region, Branch, Cluster, dan Hari Kunjungan (read-only) jika tersedia
                             if (_selectedOutlet != null && _selectedOutlet!.isNotEmpty) ...[
                               _buildTextField(
                                 controller: TextEditingController(text: _selectedOutlet?['id_outlet'].toString() ?? ''),
                                 label: 'ID Outlet',
+                                readOnly: true,
+                              ),
+                              const SizedBox(height: 16),
+                              _buildTextField(
+                                controller: TextEditingController(text: _selectedOutlet?['region'] ?? ''),
+                                label: 'Region',
+                                readOnly: true,
+                              ),
+                              const SizedBox(height: 16),
+                              _buildTextField(
+                                controller: TextEditingController(text: _selectedOutlet?['branch'] ?? ''),
+                                label: 'Branch',
+                                readOnly: true,
+                              ),
+                              const SizedBox(height: 16),
+                              _buildTextField(
+                                controller: TextEditingController(text: _selectedOutlet?['cluster'] ?? ''),
+                                label: 'Cluster',
                                 readOnly: true,
                               ),
                               const SizedBox(height: 16),
@@ -402,9 +420,9 @@ class _HomePageState extends State<HomePage> {
                                       // Dropdown untuk memilih kompetitor
                                       DropdownButtonFormField<String>(
                                         isExpanded: true,
-                                        value: ((_surveyHargaEntries[index]["kompetitor"] ?? "") as String).trim().isEmpty
+                                        value: ((_surveyHargaEntries[index]["kompetitor"] ?? "").trim().isEmpty
                                             ? null
-                                            : _surveyHargaEntries[index]["kompetitor"],
+                                            : _surveyHargaEntries[index]["kompetitor"]),
                                         hint: const Text("Pilih Kompetitor"),
                                         decoration: InputDecoration(
                                           labelText: 'Kompetitor',
