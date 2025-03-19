@@ -10,7 +10,8 @@ import 'package:http/http.dart' as http;
 class HomePage extends StatefulWidget {
   final String username;
   final int userId;
-  const HomePage({Key? key, required this.username, required this.userId}) : super(key: key);
+  const HomePage({Key? key, required this.username, required this.userId})
+      : super(key: key);
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -19,9 +20,18 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   // Form key untuk validasi form
   final _formKey = GlobalKey<FormState>();
-  // Controller untuk field nama dan tanggal
+
+  // Controller untuk field Region, Branch, dan Area (otomatis terisi)
+  final TextEditingController _regionController = TextEditingController();
+  final TextEditingController _branchController = TextEditingController();
+  final TextEditingController _areaController = TextEditingController();
+
+  // Controller untuk field Nama dan Tanggal
   final TextEditingController _namaController = TextEditingController();
   final TextEditingController _tokoController = TextEditingController();
+
+  // Controller untuk field ID Outlet (otomatis terisi)
+  final TextEditingController _idOutletController = TextEditingController();
 
   // Variabel untuk dropdown outlet
   List<Map<String, dynamic>> _outlets = [];
@@ -51,10 +61,10 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    // Set nilai awal nama sesuai parameter user
-    _namaController.text = widget.username;
     // Set nilai tanggal otomatis dengan format yyyy-MM-dd
     _tokoController.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    // Set nama otomatis dari parameter user
+    _namaController.text = widget.username;
     // Ambil data outlet dari API
     _fetchOutlets();
   }
@@ -76,6 +86,16 @@ class _HomePageState extends State<HomePage> {
           setState(() {
             _outlets = List<Map<String, dynamic>>.from(data['outlets'] as List<dynamic>);
             print("Outlets dimuat: ${_outlets.length}");
+            if (_outlets.isNotEmpty) {
+              // Set outlet default sebagai outlet pertama
+              _selectedOutlet = _outlets[0];
+              _selectedOutletId = _selectedOutlet!['id_outlet'].toString();
+              // Update field otomatis
+              _idOutletController.text = _selectedOutlet?['id_outlet'].toString() ?? '';
+              _regionController.text = _selectedOutlet?['region'] ?? '';
+              _branchController.text = _selectedOutlet?['branch'] ?? '';
+              _areaController.text = _selectedOutlet?['area'] ?? _selectedOutlet?['cluster'] ?? '';
+            }
           });
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -267,6 +287,25 @@ class _HomePageState extends State<HomePage> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            // Auto-fill: Region, Branch, dan Area (ditampilkan di atas)
+                            _buildTextField(
+                              controller: _regionController,
+                              label: 'Region',
+                              readOnly: true,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildTextField(
+                              controller: _branchController,
+                              label: 'Branch',
+                              readOnly: true,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildTextField(
+                              controller: _areaController,
+                              label: 'Area',
+                              readOnly: true,
+                            ),
+                            const SizedBox(height: 16),
                             // Field Nama (otomatis diisi)
                             _buildTextField(
                               controller: _namaController,
@@ -279,7 +318,7 @@ class _HomePageState extends State<HomePage> {
                               },
                             ),
                             const SizedBox(height: 16),
-                            // Dropdown untuk memilih Outlet
+                            // Dropdown untuk memilih Outlet (jika user ingin mengganti outlet)
                             DropdownButtonFormField<String>(
                               isExpanded: true,
                               value: _selectedOutletId,
@@ -303,6 +342,11 @@ class _HomePageState extends State<HomePage> {
                                       (outlet) => outlet['id_outlet'].toString() == value,
                                       orElse: () => {},
                                     );
+                                    // Update field otomatis berdasarkan outlet yang dipilih
+                                    _idOutletController.text = _selectedOutlet?['id_outlet'].toString() ?? '';
+                                    _regionController.text = _selectedOutlet?['region'] ?? '';
+                                    _branchController.text = _selectedOutlet?['branch'] ?? '';
+                                    _areaController.text = _selectedOutlet?['area'] ?? _selectedOutlet?['cluster'] ?? '';
                                   }
                                 });
                               },
@@ -314,39 +358,13 @@ class _HomePageState extends State<HomePage> {
                               },
                             ),
                             const SizedBox(height: 16),
-                            // Tampilkan detail outlet: ID Outlet, Region, Branch, Cluster, dan Hari Kunjungan (read-only) jika tersedia
-                            if (_selectedOutlet != null && _selectedOutlet!.isNotEmpty) ...[
-                              _buildTextField(
-                                controller: TextEditingController(text: _selectedOutlet?['id_outlet'].toString() ?? ''),
-                                label: 'ID Outlet',
-                                readOnly: true,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildTextField(
-                                controller: TextEditingController(text: _selectedOutlet?['region'] ?? ''),
-                                label: 'Region',
-                                readOnly: true,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildTextField(
-                                controller: TextEditingController(text: _selectedOutlet?['branch'] ?? ''),
-                                label: 'Branch',
-                                readOnly: true,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildTextField(
-                                controller: TextEditingController(text: _selectedOutlet?['cluster'] ?? ''),
-                                label: 'Cluster',
-                                readOnly: true,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildTextField(
-                                controller: TextEditingController(text: _selectedOutlet?['hari'] ?? ''),
-                                label: 'Hari Kunjungan',
-                                readOnly: true,
-                              ),
-                              const SizedBox(height: 16),
-                            ],
+                            // Field ID Outlet (otomatis terisi, ditempatkan di antara outlet dan tanggal)
+                            _buildTextField(
+                              controller: _idOutletController,
+                              label: 'ID Outlet',
+                              readOnly: true,
+                            ),
+                            const SizedBox(height: 16),
                             // Field Tanggal (otomatis)
                             _buildTextField(
                               controller: _tokoController,
@@ -448,7 +466,7 @@ class _HomePageState extends State<HomePage> {
                                         },
                                       ),
                                       const SizedBox(height: 16),
-                                      // TextField untuk keterangan harga (di atas input harga)
+                                      // TextField untuk keterangan harga
                                       _buildTextField(
                                         controller: TextEditingController(text: _surveyHargaEntries[index]["keterangan"]),
                                         label: 'Keterangan',
