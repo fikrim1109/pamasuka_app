@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:dropdown_search/dropdown_search.dart';
 
 class HomePage extends StatefulWidget {
   final String username;
@@ -21,10 +22,10 @@ class _HomePageState extends State<HomePage> {
   // Form key untuk validasi form
   final _formKey = GlobalKey<FormState>();
 
-  // Controller untuk field Region, Branch, dan Area (otomatis terisi)
+  // Controller untuk field Region, Branch, dan Cluster (sebelumnya Area)
   final TextEditingController _regionController = TextEditingController();
   final TextEditingController _branchController = TextEditingController();
-  final TextEditingController _areaController = TextEditingController();
+  final TextEditingController _clusterController = TextEditingController();
 
   // Controller untuk field Nama dan Tanggal
   final TextEditingController _namaController = TextEditingController();
@@ -33,9 +34,8 @@ class _HomePageState extends State<HomePage> {
   // Controller untuk field ID Outlet (otomatis terisi)
   final TextEditingController _idOutletController = TextEditingController();
 
-  // Variabel untuk dropdown outlet
+  // Variabel untuk data outlet
   List<Map<String, dynamic>> _outlets = [];
-  String? _selectedOutletId;
   Map<String, dynamic>? _selectedOutlet;
 
   bool _isLoading = false;
@@ -69,13 +69,26 @@ class _HomePageState extends State<HomePage> {
     _fetchOutlets();
   }
 
+  @override
+  void dispose() {
+    _regionController.dispose();
+    _branchController.dispose();
+    _clusterController.dispose();
+    _namaController.dispose();
+    _tokoController.dispose();
+    _idOutletController.dispose();
+    _keteranganController.dispose();
+    super.dispose();
+  }
+
   // Fungsi untuk mengambil data outlet dari API
   Future<void> _fetchOutlets() async {
     setState(() {
       _isLoading = true;
     });
     try {
-      var url = Uri.parse('http://10.0.2.2/test%20api/getAreas.php?user_id=${widget.userId}');
+      var url =
+          Uri.parse('http://10.0.2.2/test%20api/getAreas.php?user_id=${widget.userId}');
       var response = await http.get(url);
       print("Response body: ${response.body}");
 
@@ -84,22 +97,26 @@ class _HomePageState extends State<HomePage> {
         print("Decoded data: $data");
         if (data['success'] == true && data['outlets'] is List) {
           setState(() {
-            _outlets = List<Map<String, dynamic>>.from(data['outlets'] as List<dynamic>);
+            _outlets =
+                List<Map<String, dynamic>>.from(data['outlets'] as List<dynamic>);
             print("Outlets dimuat: ${_outlets.length}");
             if (_outlets.isNotEmpty) {
               // Set outlet default sebagai outlet pertama
               _selectedOutlet = _outlets[0];
-              _selectedOutletId = _selectedOutlet!['id_outlet'].toString();
               // Update field otomatis
-              _idOutletController.text = _selectedOutlet?['id_outlet'].toString() ?? '';
+              _idOutletController.text =
+                  _selectedOutlet?['id_outlet'].toString() ?? '';
               _regionController.text = _selectedOutlet?['region'] ?? '';
               _branchController.text = _selectedOutlet?['branch'] ?? '';
-              _areaController.text = _selectedOutlet?['area'] ?? _selectedOutlet?['cluster'] ?? '';
+              _clusterController.text =
+                  _selectedOutlet?['cluster'] ?? _selectedOutlet?['area'] ?? '';
             }
           });
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? 'Gagal mengambil data outlet')),
+            SnackBar(
+                content:
+                    Text(data['message'] ?? 'Gagal mengambil data outlet')),
           );
         }
       } else {
@@ -120,7 +137,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Fungsi untuk mengambil gambar dari kamera atau galeri
-  Future<void> _pickImage(ImageSource source, Function(File) onImagePicked) async {
+  Future<void> _pickImage(
+      ImageSource source, Function(File) onImagePicked) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: source);
     if (pickedFile != null) {
@@ -277,7 +295,8 @@ class _HomePageState extends State<HomePage> {
             padding: const EdgeInsets.all(20),
             child: Card(
               elevation: 8,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape:
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: _isLoading
@@ -287,7 +306,7 @@ class _HomePageState extends State<HomePage> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Auto-fill: Region, Branch, dan Area (ditampilkan di atas)
+                            // Auto-fill: Region, Branch, dan Cluster (ganti nama dari Area)
                             _buildTextField(
                               controller: _regionController,
                               label: 'Region',
@@ -301,8 +320,8 @@ class _HomePageState extends State<HomePage> {
                             ),
                             const SizedBox(height: 16),
                             _buildTextField(
-                              controller: _areaController,
-                              label: 'Area',
+                              controller: _clusterController,
+                              label: 'Cluster',
                               readOnly: true,
                             ),
                             const SizedBox(height: 16),
@@ -318,47 +337,52 @@ class _HomePageState extends State<HomePage> {
                               },
                             ),
                             const SizedBox(height: 16),
-                            // Dropdown untuk memilih Outlet (jika user ingin mengganti outlet)
-                            DropdownButtonFormField<String>(
-                              isExpanded: true,
-                              value: _selectedOutletId,
-                              hint: const Text("Pilih Outlet"),
-                              decoration: InputDecoration(
-                                labelText: 'Pilih Outlet',
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            // Dropdown Outlet dengan fitur search langsung di dropdown
+                            DropdownSearch<Map<String, dynamic>>(
+                              popupProps: const PopupProps.menu(
+                                showSearchBox: true,
+                                searchFieldProps: TextFieldProps(
+                                  decoration: InputDecoration(hintText: "Cari outlet..."),
+                                ),
                               ),
-                              items: _outlets.map((outlet) {
-                                return DropdownMenuItem<String>(
-                                  value: outlet['id_outlet'].toString(),
-                                  child: Text(outlet['nama_outlet'] ?? ''),
-                                );
-                              }).toList(),
+                              items: _outlets,
+                              itemAsString: (outlet) =>
+                                  outlet['nama_outlet'] ?? '',
+                              selectedItem: _selectedOutlet,
+                              dropdownDecoratorProps: DropDownDecoratorProps(
+                                dropdownSearchDecoration: InputDecoration(
+                                  labelText: "Pilih Outlet",
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 12),
+                                ),
+                              ),
                               onChanged: (value) {
                                 setState(() {
-                                  _selectedOutletId = value;
+                                  _selectedOutlet = value;
                                   if (value != null) {
-                                    _selectedOutlet = _outlets.firstWhere(
-                                      (outlet) => outlet['id_outlet'].toString() == value,
-                                      orElse: () => {},
-                                    );
-                                    // Update field otomatis berdasarkan outlet yang dipilih
-                                    _idOutletController.text = _selectedOutlet?['id_outlet'].toString() ?? '';
-                                    _regionController.text = _selectedOutlet?['region'] ?? '';
-                                    _branchController.text = _selectedOutlet?['branch'] ?? '';
-                                    _areaController.text = _selectedOutlet?['area'] ?? _selectedOutlet?['cluster'] ?? '';
+                                    _idOutletController.text =
+                                        value['id_outlet'].toString();
+                                    _regionController.text =
+                                        value['region'] ?? '';
+                                    _branchController.text =
+                                        value['branch'] ?? '';
+                                    _clusterController.text =
+                                        value['cluster'] ?? value['area'] ?? '';
                                   }
                                 });
                               },
                               validator: (value) {
-                                if (value == null || value.isEmpty) {
+                                if (value == null) {
                                   return 'Silakan pilih outlet';
                                 }
                                 return null;
                               },
                             ),
                             const SizedBox(height: 16),
-                            // Field ID Outlet (otomatis terisi, ditempatkan di antara outlet dan tanggal)
+                            // Field ID Outlet (otomatis terisi)
                             _buildTextField(
                               controller: _idOutletController,
                               label: 'ID Outlet',
@@ -379,8 +403,10 @@ class _HomePageState extends State<HomePage> {
                               hint: const Text("Pilih Jenis Survei"),
                               decoration: InputDecoration(
                                 labelText: 'Jenis Survei',
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
                               ),
                               items: _brandinganOptions.map((option) {
                                 return DropdownMenuItem<String>(
@@ -412,15 +438,27 @@ class _HomePageState extends State<HomePage> {
                               _buildImagePicker(
                                 label: "Foto Etalase",
                                 image: _brandingImageEtalase,
-                                onPick: () => _pickImage(ImageSource.camera, (file) => _brandingImageEtalase = file),
-                                onRetake: () => _pickImage(ImageSource.camera, (file) => _brandingImageEtalase = file),
+                                onPick: () => _pickImage(
+                                    ImageSource.camera,
+                                    (file) =>
+                                        _brandingImageEtalase = file),
+                                onRetake: () => _pickImage(
+                                    ImageSource.camera,
+                                    (file) =>
+                                        _brandingImageEtalase = file),
                               ),
                               const SizedBox(height: 16),
                               _buildImagePicker(
                                 label: "Foto Tampak Depan",
                                 image: _brandingImageTampakDepan,
-                                onPick: () => _pickImage(ImageSource.camera, (file) => _brandingImageTampakDepan = file),
-                                onRetake: () => _pickImage(ImageSource.camera, (file) => _brandingImageTampakDepan = file),
+                                onPick: () => _pickImage(
+                                    ImageSource.camera,
+                                    (file) =>
+                                        _brandingImageTampakDepan = file),
+                                onRetake: () => _pickImage(
+                                    ImageSource.camera,
+                                    (file) =>
+                                        _brandingImageTampakDepan = file),
                               ),
                               const SizedBox(height: 16),
                             ],
@@ -444,7 +482,8 @@ class _HomePageState extends State<HomePage> {
                                         hint: const Text("Pilih Kompetitor"),
                                         decoration: InputDecoration(
                                           labelText: 'Kompetitor',
-                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                          border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(12)),
                                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                         ),
                                         items: _kompetitorOptions.map((option) {
