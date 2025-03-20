@@ -49,11 +49,12 @@ class _HomePageState extends State<HomePage> {
   File? _brandingImageTampakDepan;
 
   // Untuk opsi "Survei harga": daftar entri dinamis
-  // Setiap entri: {"kompetitor": "", "keterangan": "", "harga": ""}
+  // Setiap entri: {"operator": "", "paket": "", "keterangan": "", "harga": ""}
   List<Map<String, String>> _surveyHargaEntries = [
-    {"kompetitor": "", "keterangan": "", "harga": ""}
+    {"operator": "", "paket": "", "keterangan": "", "harga": ""}
   ];
-  final List<String> _kompetitorOptions = ["xl", "indosat ooredo", "axis", "smartfren"];
+  final List<String> _operatorOptions = ["xl", "indosat ooredo", "axis", "smartfren" , "3", "telkomsel"];
+  final List<String> _paketOptions = ["Voucher Fisik", "Voucher Perdana"];
 
   // Controller untuk keterangan kunjungan (paragraf panjang)
   final TextEditingController _keteranganController = TextEditingController();
@@ -170,7 +171,8 @@ class _HomePageState extends State<HomePage> {
     } else if (_selectedBrandinganOption == "Survei harga") {
       // Pastikan semua entri survei harga telah diisi dengan lengkap
       for (var entry in _surveyHargaEntries) {
-        if ((entry["kompetitor"] ?? "").trim().isEmpty ||
+        if ((entry["operator"] ?? "").trim().isEmpty ||
+            (entry["paket"] ?? "").trim().isEmpty ||
             (entry["harga"] ?? "").trim().isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Silakan lengkapi semua entri survei harga')),
@@ -421,7 +423,7 @@ class _HomePageState extends State<HomePage> {
                                   _brandingImageEtalase = null;
                                   _brandingImageTampakDepan = null;
                                   _surveyHargaEntries = [
-                                    {"kompetitor": "", "keterangan": "", "harga": ""}
+                                    {"operator": "", "paket": "", "keterangan": "", "harga": ""}
                                   ];
                                 });
                               },
@@ -473,38 +475,72 @@ class _HomePageState extends State<HomePage> {
                                   return Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      // Dropdown untuk memilih kompetitor
-                                      DropdownButtonFormField<String>(
-                                        isExpanded: true,
-                                        value: ((_surveyHargaEntries[index]["kompetitor"] ?? "").trim().isEmpty
-                                            ? null
-                                            : _surveyHargaEntries[index]["kompetitor"]),
-                                        hint: const Text("Pilih Kompetitor"),
-                                        decoration: InputDecoration(
-                                          labelText: 'Kompetitor',
-                                          border: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(12)),
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      // Dropdown untuk memilih operator (hanya untuk entri pertama)
+                                      if (index == 0) ...[
+                                        DropdownButtonFormField<String>(
+                                          isExpanded: true,
+                                          value: ((_surveyHargaEntries[index]["operator"] ?? "").trim().isEmpty
+                                              ? null
+                                              : _surveyHargaEntries[index]["operator"]),
+                                          hint: const Text("Pilih Operator"),
+                                          decoration: InputDecoration(
+                                            labelText: 'Operator',
+                                            border: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(12)),
+                                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                          ),
+                                          items: _operatorOptions.map((option) {
+                                            return DropdownMenuItem<String>(
+                                              value: option,
+                                              child: Text(option),
+                                            );
+                                          }).toList(),
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _surveyHargaEntries[index]["operator"] = value ?? "";
+                                            });
+                                          },
+                                          validator: (value) {
+                                            if (value == null || value.isEmpty) {
+                                              return 'Silakan pilih operator';
+                                            }
+                                            return null;
+                                          },
                                         ),
-                                        items: _kompetitorOptions.map((option) {
-                                          return DropdownMenuItem<String>(
-                                            value: option,
-                                            child: Text(option),
-                                          );
-                                        }).toList(),
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _surveyHargaEntries[index]["kompetitor"] = value ?? "";
-                                          });
-                                        },
-                                        validator: (value) {
-                                          if (value == null || value.isEmpty) {
-                                            return 'Silakan pilih kompetitor';
-                                          }
-                                          return null;
-                                        },
-                                      ),
-                                      const SizedBox(height: 16),
+                                        const SizedBox(height: 16),
+                                        // Dropdown untuk memilih paket (hanya untuk entri pertama)
+                                        DropdownButtonFormField<String>(
+                                          isExpanded: true,
+                                          value: ((_surveyHargaEntries[index]["paket"] ?? "").trim().isEmpty
+                                              ? null
+                                              : _surveyHargaEntries[index]["paket"]),
+                                          hint: const Text("Pilih Paket"),
+                                          decoration: InputDecoration(
+                                            labelText: 'Paket',
+                                            border: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(12)),
+                                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                          ),
+                                          items: _paketOptions.map((option) {
+                                            return DropdownMenuItem<String>(
+                                              value: option,
+                                              child: Text(option),
+                                            );
+                                          }).toList(),
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _surveyHargaEntries[index]["paket"] = value ?? "";
+                                            });
+                                          },
+                                          validator: (value) {
+                                            if (value == null || value.isEmpty) {
+                                              return 'Silakan pilih paket';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                        const SizedBox(height: 16),
+                                      ],
                                       // TextField untuk keterangan harga
                                       _buildTextField(
                                         controller: TextEditingController(text: _surveyHargaEntries[index]["keterangan"]),
@@ -555,7 +591,18 @@ class _HomePageState extends State<HomePage> {
                                 child: TextButton(
                                   onPressed: () {
                                     setState(() {
-                                      _surveyHargaEntries.add({"kompetitor": "", "keterangan": "", "harga": ""});
+                                      // Gunakan operator dan paket yang dipilih pada entri pertama
+                                      String operator = _surveyHargaEntries.isNotEmpty ? 
+                                          _surveyHargaEntries[0]["operator"] ?? "" : "";
+                                      String paket = _surveyHargaEntries.isNotEmpty ? 
+                                          _surveyHargaEntries[0]["paket"] ?? "" : "";
+                                          
+                                      _surveyHargaEntries.add({
+                                        "operator": operator, 
+                                        "paket": paket, 
+                                        "keterangan": "", 
+                                        "harga": ""
+                                      });
                                     });
                                   },
                                   child: const Text("Tambah Data"),
