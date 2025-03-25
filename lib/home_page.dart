@@ -285,8 +285,8 @@ class _HomePageState extends State<HomePage> {
           // Background menggunakan gradient merah
           gradient: LinearGradient(
             colors: [
-              Color(0xFFF71212),
-              Color.fromARGB(255, 229, 14, 14),
+              Color(0xFFFFB6B6),
+              Color(0xFFFF8E8E),
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
