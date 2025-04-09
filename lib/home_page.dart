@@ -18,19 +18,21 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-// --- Helper Class untuk Controller per Entri Harga ---
-// Agar tidak kehilangan state saat list rebuild
+// --- Helper Class untuk Controller per Entri Harga (DITAMBAH jumlahController) ---
 class HargaEntryControllers {
-  final TextEditingController keteranganController;
+  final TextEditingController namaPaketController; // Sebelumnya keteranganController
   final TextEditingController hargaController;
+  final TextEditingController jumlahController; // Controller baru
 
   HargaEntryControllers()
-      : keteranganController = TextEditingController(),
-        hargaController = TextEditingController();
+      : namaPaketController = TextEditingController(),
+        hargaController = TextEditingController(),
+        jumlahController = TextEditingController(); // Inisialisasi
 
   void dispose() {
-    keteranganController.dispose();
+    namaPaketController.dispose();
     hargaController.dispose();
+    jumlahController.dispose(); // Dispose controller baru
   }
 }
 
@@ -38,46 +40,58 @@ class HargaEntryControllers {
 class _HomePageState extends State<HomePage> {
   final _formKey = GlobalKey<FormState>();
 
+  // Controller untuk field yang auto-fill dari Outlet
   final TextEditingController _regionController = TextEditingController();
   final TextEditingController _branchController = TextEditingController();
   final TextEditingController _clusterController = TextEditingController();
+  final TextEditingController _idOutletController = TextEditingController();
+
+  // Controller lain
   final TextEditingController _namaController = TextEditingController();
   final TextEditingController _tokoController = TextEditingController();
-  final TextEditingController _idOutletController = TextEditingController();
   final TextEditingController _keteranganController = TextEditingController(); // Keterangan Kunjungan
 
+  // Data Outlet & Loading State
   List<Map<String, dynamic>> _outlets = [];
   Map<String, dynamic>? _selectedOutlet;
   bool _isLoading = false;
 
+  // Opsi Jenis Survei
   String? _selectedBrandinganOption;
   final List<String> _brandinganOptions = ["Survei branding", "Survei harga"];
 
+  // Data Survei Branding
   File? _brandingImageEtalase;
   File? _brandingImageTampakDepan;
 
-  // --- Struktur Data Baru untuk Survei Harga ---
+  // Data Survei Harga (Struktur Baru - DITAMBAH 'jumlah')
   List<Map<String, dynamic>> _operatorSurveyGroups = [];
-  // Map<groupIndex, Map<entryIndex, HargaEntryControllers>>
+  // Contoh struktur satu grup:
+    // {
+    //   "operator": "XL",
+    //   "paket": "VOUCHER FISIK",
+    //   "entries": [
+    //     {"nama_paket": "Xtra Combo Lite L", "harga": "50000", "jumlah": "10"}, // nama_paket & jumlah
+    //     {"nama_paket": "Xtra Combo Lite M", "harga": "35000", "jumlah": "25"}
+    //   ],
+    //   "isHidden": false
+    // }
   Map<int, Map<int, HargaEntryControllers>> _hargaEntryControllersMap = {};
 
-
-  // --- State Variable Baru ---
+  // State untuk Limit Survei Harga
   int _totalHargaEntriesCount = 0;
-  final int _maxHargaEntries = 10; // Batas maksimal
+  final int _maxHargaEntries = 10; // Batas maksimal tetap berlaku untuk jumlah BARIS entri
 
-  final List<String> _operatorOptions = ["xl", "indosat ooredo", "axis", "smartfren", "3", "telkomsel"];
-  final List<String> _paketOptions = ["Voucher Fisik", "Voucher Perdana"];
-
+  // Opsi Dropdown Survei Harga (SUDAH DIUBAH SESUAI PERMINTAAN)
+  final List<String> _operatorOptions = ["XL", "INDOSAT OOREDO", "AXIS", "SMARTFREN" , "3", "TELKOMSEL"]; // Kapital Semua
+  final List<String> _paketOptions = ["VOUCHER FISIK", "PERDANA INTERNET"]; // Voucher Fisik diubah
 
   @override
   void initState() {
     super.initState();
     _tokoController.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    _namaController.text = widget.username;
-    _fetchOutlets();
-    // Inisialisasi grup survei harga pertama jika dipilih
-    // Dihapus dari sini, ditambahkan saat jenis survei dipilih
+    _namaController.text = widget.username; // Nama dari login
+    _fetchOutlets(); // Ambil data outlet dan auto-select pertama
   }
 
   @override
@@ -89,7 +103,7 @@ class _HomePageState extends State<HomePage> {
     _tokoController.dispose();
     _idOutletController.dispose();
     _keteranganController.dispose();
-    // Dispose semua controller dinamis
+    // Dispose semua controller dinamis survei harga
     _hargaEntryControllersMap.values.forEach((entryMap) {
       entryMap.values.forEach((controllers) {
         controllers.dispose();
@@ -101,7 +115,7 @@ class _HomePageState extends State<HomePage> {
   // --- Fungsi untuk inisialisasi atau reset survei harga ---
   void _initializeSurveyHarga() {
      setState(() {
-      // Reset data lama dan controller
+       // Reset data lama dan controller
        _operatorSurveyGroups.clear();
        _hargaEntryControllersMap.values.forEach((entryMap) {
         entryMap.values.forEach((controllers) => controllers.dispose());
@@ -114,66 +128,51 @@ class _HomePageState extends State<HomePage> {
      });
   }
 
-   // --- Fungsi untuk menambahkan grup operator baru ---
+   // --- Fungsi untuk menambahkan grup operator baru (DITAMBAH 'jumlah') ---
   void _addOperatorGroup() {
     setState(() {
       int newGroupIndex = _operatorSurveyGroups.length;
-      // Tambahkan grup baru
       _operatorSurveyGroups.add({
-        "operator": null, // Mulai dengan null
-        "paket": null,    // Mulai dengan null
-        "entries": [
-          {"keterangan": "", "harga": ""} // Satu entri harga awal
-        ],
-        "isHidden": false // Default tidak tersembunyi
+        "operator": null,
+        "paket": null,
+        "entries": [{"nama_paket": "", "harga": "", "jumlah": ""}], // Tambah jumlah
+        "isHidden": false
       });
 
-      // Inisialisasi controllers untuk entri pertama di grup baru
-      _hargaEntryControllersMap[newGroupIndex] = {
-         0: HargaEntryControllers()
-      };
-
-      // Increment total count untuk entri awal ini
+      _hargaEntryControllersMap[newGroupIndex] = { 0: HargaEntryControllers() };
       _totalHargaEntriesCount++;
-      // Jika sudah mencapai batas, jangan tambahkan lagi (meskipun tombol add group tetap ada)
-      // Namun, logika penambahan entri akan diblokir.
     });
   }
 
-  // --- Fungsi untuk menambah data (keterangan/harga) dalam satu grup ---
+  // --- Fungsi untuk menambah data (entri) dalam satu grup (DITAMBAH 'jumlah') ---
   void _addHargaEntry(int groupIndex) {
      if (_totalHargaEntriesCount >= _maxHargaEntries) {
        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Batas maksimal $_maxHargaEntries data harga tercapai')),
+          SnackBar(content: Text('Batas maksimal $_maxHargaEntries data paket tercapai')),
        );
-       return; // Jangan tambahkan jika sudah mencapai batas
+       return;
      }
 
     setState(() {
       List entries = _operatorSurveyGroups[groupIndex]["entries"];
       int newEntryIndex = entries.length;
+      entries.add({"nama_paket": "", "harga": "", "jumlah": ""}); // Tambah jumlah
 
-      entries.add({"keterangan": "", "harga": ""});
-
-      // Inisialisasi controllers untuk entri baru
       if (_hargaEntryControllersMap[groupIndex] == null) {
         _hargaEntryControllersMap[groupIndex] = {};
       }
        _hargaEntryControllersMap[groupIndex]![newEntryIndex] = HargaEntryControllers();
-
-       _totalHargaEntriesCount++; // Increment counter
+       _totalHargaEntriesCount++;
     });
   }
 
-  // --- Fungsi untuk menghapus data (keterangan/harga) dalam satu grup ---
+  // --- Fungsi untuk menghapus data (entri) dalam satu grup ---
   void _removeHargaEntry(int groupIndex, int entryIndex) {
     setState(() {
        List entries = _operatorSurveyGroups[groupIndex]["entries"];
-       // Jangan hapus jika hanya tersisa satu entri dalam grup
        if (entries.length > 1) {
          entries.removeAt(entryIndex);
-
-         // Hapus dan dispose controller yang sesuai
+         // Dispose controller (termasuk jumlahController)
          _hargaEntryControllersMap[groupIndex]?[entryIndex]?.dispose();
          _hargaEntryControllersMap[groupIndex]?.remove(entryIndex);
 
@@ -185,11 +184,10 @@ class _HomePageState extends State<HomePage> {
         });
         _hargaEntryControllersMap[groupIndex] = updatedControllers;
 
-
-         _totalHargaEntriesCount--; // Decrement counter
+         _totalHargaEntriesCount--; // Kurangi counter
        } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Minimal harus ada satu data harga per operator')),
+            const SnackBar(content: Text('Minimal harus ada satu data paket per operator')),
           );
        }
     });
@@ -202,81 +200,132 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-
+  // Fungsi untuk mengambil data outlet dari API (Tetap sama)
   Future<void> _fetchOutlets() async {
-    // ... (kode fetch outlet tetap sama) ...
-     setState(() {
+    setState(() {
       _isLoading = true;
+       _outlets = [];
+       _selectedOutlet = null;
+       _idOutletController.clear();
+       _regionController.clear();
+       _branchController.clear();
+       _clusterController.clear();
     });
     try {
-      var url =
-          Uri.parse('http://10.0.2.2/test%20api/getAreas.php?user_id=${widget.userId}');
-      var response = await http.get(url);
-      print("Response body: ${response.body}");
+      var url = Uri.parse(
+          'http://10.0.2.2/test%20api/getAreas.php?user_id=${widget.userId}'); // Ganti dengan URL API Anda
+      var response = await http.get(url).timeout(const Duration(seconds: 15));
+      print("Outlet API Response status: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         var data = json.decode(response.body);
-        print("Decoded data: $data");
         if (data['success'] == true && data['outlets'] is List) {
+          final List<Map<String, dynamic>> fetchedOutlets =
+              List<Map<String, dynamic>>.from(data['outlets'] as List<dynamic>);
+          print("Outlets dimuat: ${fetchedOutlets.length}");
+
+          Map<String, dynamic>? initialOutlet;
+          String initialId = '';
+          String initialRegion = '';
+          String initialBranch = '';
+          String initialCluster = '';
+
+          if (fetchedOutlets.isNotEmpty) {
+            initialOutlet = fetchedOutlets[0];
+            initialId = initialOutlet['id_outlet']?.toString() ?? '';
+            initialRegion = initialOutlet['region'] ?? '';
+            initialBranch = initialOutlet['branch'] ?? '';
+            initialCluster = initialOutlet['cluster'] ?? initialOutlet['area'] ?? '';
+            print("Outlet pertama dipilih: ${initialOutlet['nama_outlet']}");
+          } else {
+             print("Tidak ada data outlet ditemukan.");
+          }
+
           setState(() {
-            _outlets =
-                List<Map<String, dynamic>>.from(data['outlets'] as List<dynamic>);
-            print("Outlets dimuat: ${_outlets.length}");
-            // Jangan set outlet default disini agar user memilih
-            // if (_outlets.isNotEmpty) {
-            //   _selectedOutlet = _outlets[0];
-            //   _idOutletController.text = _selectedOutlet?['id_outlet'].toString() ?? '';
-            //   _regionController.text = _selectedOutlet?['region'] ?? '';
-            //   _branchController.text = _selectedOutlet?['branch'] ?? '';
-            //   _clusterController.text = _selectedOutlet?['cluster'] ?? _selectedOutlet?['area'] ?? '';
-            // }
+            _outlets = fetchedOutlets;
+            _selectedOutlet = initialOutlet;
+            _idOutletController.text = initialId;
+            _regionController.text = initialRegion;
+            _branchController.text = initialBranch;
+            _clusterController.text = initialCluster;
           });
+
         } else {
+          print("Gagal mengambil data outlet: ${data['message'] ?? 'Format data tidak sesuai'}");
+           if (mounted) setState(() {});
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
                 content:
-                    Text(data['message'] ?? 'Gagal mengambil data outlet')),
+                    Text(data['message'] ?? 'Gagal mengambil data outlet: Format tidak sesuai')),
           );
         }
       } else {
+        print("Gagal mengambil data outlet: Server error ${response.statusCode}");
+         if (mounted) setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal mengambil data outlet')),
+          SnackBar(content: Text('Gagal mengambil data outlet (Error: ${response.statusCode})')),
         );
       }
     } catch (e) {
-      print("Error: $e");
+       if (mounted) setState(() {});
+      print("Error fetching outlets: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Terjadi kesalahan: $e')),
+        SnackBar(content: Text('Terjadi kesalahan jaringan: $e')),
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+       if (mounted) {
+           setState(() {
+             _isLoading = false;
+           });
+       }
     }
   }
 
-  Future<void> _pickImage(
-      ImageSource source, Function(File) onImagePicked) async {
-    // ... (kode pick image tetap sama) ...
+  // Fungsi untuk mengambil gambar (Tetap sama)
+  Future<void> _pickImage(ImageSource source, Function(File) onImagePicked) async {
      final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: source);
-    if (pickedFile != null) {
-      setState(() {
-        onImagePicked(File(pickedFile.path));
-      });
+    try {
+      final pickedFile = await picker.pickImage(source: source, imageQuality: 80);
+      if (pickedFile != null) {
+        if (mounted) {
+          setState(() {
+             onImagePicked(File(pickedFile.path));
+          });
+        }
+      }
+    } catch (e) {
+      print("Error picking image: $e");
+       if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+             SnackBar(content: Text('Gagal mengambil gambar: $e')),
+           );
+       }
     }
   }
 
+  // Fungsi untuk validasi dan submit form (DITAMBAH VALIDASI 'jumlah')
   Future<void> _submitForm() async {
-    // --- Update Validasi ---
-    if (!_formKey.currentState!.validate() || _selectedOutlet == null) return;
+    FocusScope.of(context).unfocus();
 
+    if (!_formKey.currentState!.validate()) {
+       ScaffoldMessenger.of(context).showSnackBar(
+         const SnackBar(content: Text('Harap periksa kembali data yang belum terisi')),
+       );
+      return;
+    }
+     if (_selectedOutlet == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+         const SnackBar(content: Text('Outlet belum terpilih atau data outlet gagal dimuat')),
+       );
+       return;
+     }
     if (_selectedBrandinganOption == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Silakan pilih jenis survei')),
       );
       return;
     }
+
     if (_selectedBrandinganOption == "Survei branding") {
       if (_brandingImageEtalase == null || _brandingImageTampakDepan == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -285,19 +334,19 @@ class _HomePageState extends State<HomePage> {
         return;
       }
     } else if (_selectedBrandinganOption == "Survei harga") {
-       // Validasi survei harga dengan struktur baru
        if (_operatorSurveyGroups.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Silakan tambahkan data survei harga')),
+            const SnackBar(content: Text('Silakan tambahkan minimal satu data survei harga')),
           );
           return;
        }
 
        for (int i = 0; i < _operatorSurveyGroups.length; i++) {
          var group = _operatorSurveyGroups[i];
-         if ((group["operator"] ?? "").isEmpty || (group["paket"] ?? "").isEmpty) {
+         if ((group["operator"] == null || group["operator"].isEmpty) ||
+             (group["paket"] == null || group["paket"].isEmpty)) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Silakan pilih Operator dan Paket untuk Grup ${i + 1}')),
+              SnackBar(content: Text('Lengkapi Operator dan Paket untuk Grup ${i + 1}')),
             );
             return;
          }
@@ -310,68 +359,123 @@ class _HomePageState extends State<HomePage> {
               return;
           }
 
+         // Validasi Entri dalam Grup
          for (int j = 0; j < entries.length; j++) {
-            var entry = entries[j];
-             // Ambil data dari controller jika ada, atau dari map jika controller belum terinisialisasi (seharusnya tidak terjadi)
-             String keterangan = _hargaEntryControllersMap[i]?[j]?.keteranganController.text ?? entry["keterangan"] ?? "";
-             String harga = _hargaEntryControllersMap[i]?[j]?.hargaController.text ?? entry["harga"] ?? "";
+            HargaEntryControllers? controllers = _hargaEntryControllersMap[i]?[j];
+            if (controllers == null) {
+                 print("ERROR: Controller tidak ditemukan untuk Grup $i, Entri $j saat submit");
+                 ScaffoldMessenger.of(context).showSnackBar(
+                   SnackBar(content: Text('Terjadi error internal pada data Grup ${i+1}')),
+                 );
+                 return;
+            }
 
-            if (keterangan.trim().isEmpty || harga.trim().isEmpty) {
+            String namaPaket = controllers.namaPaketController.text.trim(); // Ganti nama
+            String hargaInput = controllers.hargaController.text;
+            String jumlahInput = controllers.jumlahController.text.trim(); // Ambil jumlah
+            String hargaNumerikBersih = hargaInput.replaceAll('.', '');
+
+            // Validasi Nama Paket
+            if (namaPaket.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Lengkapi Keterangan dan Harga untuk data ke-${j + 1} di Grup ${i + 1}')),
+                SnackBar(content: Text('Lengkapi Nama Paket data ke-${j + 1} di Grup ${i + 1}')),
               );
               return;
             }
-            // Update map dengan data dari controller sebelum submit (jika perlu)
-             _operatorSurveyGroups[i]["entries"][j]["keterangan"] = keterangan;
-             _operatorSurveyGroups[i]["entries"][j]["harga"] = harga;
+            // Validasi Harga
+            if (hargaNumerikBersih.isEmpty || double.tryParse(hargaNumerikBersih) == null || double.parse(hargaNumerikBersih) <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Masukkan Harga valid (> 0) data ke-${j + 1} di Grup ${i + 1}')),
+                  );
+                  return;
+            }
+             // Validasi Jumlah (Wajib diisi, angka > 0)
+            if (jumlahInput.isEmpty || int.tryParse(jumlahInput) == null || int.parse(jumlahInput) <= 0) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Masukkan Jumlah valid (> 0) data ke-${j + 1} di Grup ${i + 1}')),
+              );
+              return;
+            }
+
+            // Update map dengan data bersih *sebelum* dikirim
+             _operatorSurveyGroups[i]["entries"][j]["nama_paket"] = namaPaket; // Ganti nama key
+             _operatorSurveyGroups[i]["entries"][j]["harga"] = hargaNumerikBersih;
+             _operatorSurveyGroups[i]["entries"][j]["jumlah"] = jumlahInput; // Simpan jumlah
          }
        }
     }
 
-     // --- Log data sebelum dikirim (placeholder) ---
-    print("--- Data Form ---");
-    print("Outlet: ${_selectedOutlet?['nama_outlet']}");
-    print("ID Outlet: ${_idOutletController.text}");
+     // --- Data Siap Kirim (DITAMBAH 'jumlah') ---
+    print("--- Data Form Siap Dikirim ---");
+    print("User ID: ${widget.userId}");
+    print("Username: ${widget.username}");
+    print("Outlet ID: ${_idOutletController.text}");
+    print("Outlet Nama: ${_selectedOutlet?['nama_outlet'] ?? 'N/A'}");
+    print("Region: ${_regionController.text}");
+    print("Branch: ${_branchController.text}");
+    print("Cluster: ${_clusterController.text}");
     print("Tanggal: ${_tokoController.text}");
-    print("Nama: ${_namaController.text}");
     print("Jenis Survei: $_selectedBrandinganOption");
 
     if (_selectedBrandinganOption == "Survei branding") {
-       print("Foto Etalase: ${_brandingImageEtalase?.path}");
-       print("Foto Tampak Depan: ${_brandingImageTampakDepan?.path}");
+       print("Foto Etalase Path: ${_brandingImageEtalase?.path ?? 'N/A'}");
+       print("Foto Tampak Depan Path: ${_brandingImageTampakDepan?.path ?? 'N/A'}");
     } else if (_selectedBrandinganOption == "Survei harga") {
-       print("Data Harga:");
-       for (var group in _operatorSurveyGroups) {
-         print("  Operator: ${group['operator']}, Paket: ${group['paket']}");
-         for (var entry in group['entries']) {
-           print("    Keterangan: ${entry['keterangan']}, Harga: ${entry['harga']}");
-         }
-       }
+       print("Data Harga (JSON):");
+       print(jsonEncode(_operatorSurveyGroups)); // Print struktur lengkap
     }
-    print("Keterangan Kunjungan: ${_keteranganController.text}");
+    print("Keterangan Kunjungan: ${_keteranganController.text.trim()}");
     print("--- Akhir Data ---");
 
-    // Jika validasi berhasil, tampilkan dialog sukses (placeholder)
+    // Tampilkan dialog loading
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Berhasil!'),
-        content: const Text('Data siap dikirim (implementasi API call disini)'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+      barrierDismissible: false,
+      builder: (BuildContext context) { /* ... Dialog Loading ... */
+        return const Dialog(
+          child: Padding(
+            padding: EdgeInsets.all(20.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 20),
+                Text("Mengirim data..."),
+              ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
 
     // --- TODO: Implementasi pengiriman data ke API ---
-    // Anda perlu mengubah endpoint API dan cara mengirim data
-    // sesuai dengan struktur _operatorSurveyGroups jika jenis survei adalah harga.
+    await Future.delayed(const Duration(seconds: 2)); // Placeholder
+
+    if (mounted) Navigator.pop(context); // Tutup loading
+
+    // Tampilkan hasil
+    if (mounted) {
+         showDialog(
+          context: context,
+          builder: (context) => AlertDialog( /* ... Dialog Sukses ... */
+            title: const Text('Berhasil'),
+            content: const Text('Data survei berhasil dikirim.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                   Navigator.pop(context);
+                   // Optional: Reset form
+                   // _resetForm();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+    }
   }
 
+  // Widget builder untuk TextField standar (Tetap sama)
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -384,7 +488,6 @@ class _HomePageState extends State<HomePage> {
     List<TextInputFormatter>? inputFormatters,
     String? prefixText,
   }) {
-    // ... (kode build text field tetap sama) ...
      return TextFormField(
       controller: controller,
       readOnly: readOnly,
@@ -397,20 +500,26 @@ class _HomePageState extends State<HomePage> {
         labelText: label,
         prefixText: prefixText,
         hintText: hint,
+        filled: readOnly,
+        fillColor: readOnly ? Colors.grey[200] : null,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
+       style: TextStyle(color: readOnly ? Colors.grey[700] : null),
+       enableInteractiveSelection: !readOnly,
+       focusNode: readOnly ? FocusNode(canRequestFocus: false) : null,
     );
   }
 
+  // Widget builder untuk Image Picker (Tetap sama)
   Widget _buildImagePicker({
     required String label,
     File? image,
     required VoidCallback onPick,
     required VoidCallback onRetake,
   }) {
-    // ... (kode build image picker tetap sama) ...
-     return Column(
+     /* ... Kode _buildImagePicker ... */
+      return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -419,26 +528,42 @@ class _HomePageState extends State<HomePage> {
           height: 150,
           width: double.infinity,
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
+            border: Border.all(color: Colors.grey.shade400),
             borderRadius: BorderRadius.circular(12),
+            color: Colors.grey[100],
           ),
           child: image != null
               ? Stack(
+                  alignment: Alignment.center,
                   fit: StackFit.expand,
                   children: [
-                    Image.file(image, fit: BoxFit.cover),
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: IconButton(
-                        icon: const Icon(Icons.camera_alt, color: Colors.white),
-                        onPressed: onRetake,
+                    ClipRRect(
+                       borderRadius: BorderRadius.circular(11.0),
+                       child: Image.file(image, fit: BoxFit.cover)
+                    ),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Container(
+                         decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.5),
+                            shape: BoxShape.circle,
+                          ),
+                        child: IconButton(
+                          icon: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                           tooltip: "Ambil Ulang",
+                          onPressed: onRetake,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
                       ),
                     ),
                   ],
                 )
               : Center(
                   child: IconButton(
-                    icon: const Icon(Icons.camera_alt, size: 40),
+                    icon: Icon(Icons.camera_alt, size: 40, color: Colors.grey[600]),
+                    tooltip: "Ambil Gambar",
                     onPressed: onPick,
                   ),
                 ),
@@ -455,10 +580,11 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('Form Survei'),
         centerTitle: true,
+        backgroundColor: Colors.redAccent,
       ),
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
+          gradient: LinearGradient( /* ... Gradient ... */
             colors: [Color(0xFFFFB6B6), Color(0xFFFF8E8E)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -466,21 +592,31 @@ class _HomePageState extends State<HomePage> {
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Card(
               elevation: 8,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                padding: const EdgeInsets.all(20),
+                child: _isLoading && _outlets.isEmpty
+                    ? const Center( /* ... Loading Indicator ... */
+                         child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                               CircularProgressIndicator(),
+                               SizedBox(height: 15),
+                               Text("Memuat data outlet...")
+                            ],
+                         )
+                       )
                     : Form(
                         key: _formKey,
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start, // Align start
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // ... (Field Region, Branch, Cluster, Nama, Outlet, ID Outlet, Tanggal tetap sama) ...
+                            // --- Fields Read Only: Region, Branch, Cluster, Nama ---
+                            /* ... Kode _buildTextField untuk Region, Branch, Cluster, Nama ... */
                              _buildTextField(
                               controller: _regionController,
                               label: 'Region',
@@ -502,19 +638,27 @@ class _HomePageState extends State<HomePage> {
                             _buildTextField(
                               controller: _namaController,
                               label: 'Nama',
-                              readOnly: true, // Nama dari login, tidak perlu validasi lagi
-                              // validator: (value) { ... } // Dihapus
+                              readOnly: true,
                             ),
                             const SizedBox(height: 16),
-                            DropdownSearch<Map<String, dynamic>>(
-                              popupProps: const PopupProps.menu(
+
+                            // --- Dropdown Outlet ---
+                            /* ... Kode DropdownSearch Outlet ... */
+                             DropdownSearch<Map<String, dynamic>>(
+                              popupProps: PopupProps.menu(
                                 showSearchBox: true,
-                                searchFieldProps: TextFieldProps(
-                                  decoration: InputDecoration(hintText: "Cari outlet..."),
+                                searchFieldProps: const TextFieldProps(
+                                  decoration: InputDecoration(
+                                    hintText: "Cari nama outlet...",
+                                    prefixIcon: Icon(Icons.search),
+                                    border: OutlineInputBorder()
+                                   ),
                                 ),
-                                constraints: BoxConstraints(maxHeight: 300),
-                                menuProps: MenuProps( // Tambahkan ini untuk batasi tinggi menu dropdown
-                                ),
+                                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+                                emptyBuilder: (context, searchEntry) => const Center(child: Text("Outlet tidak ditemukan")),
+                                errorBuilder: (context, searchEntry, exception) => const Center(child: Text("Gagal memuat outlet")),
+                                loadingBuilder: (context, searchEntry) => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                menuProps: const MenuProps(),
                               ),
                               items: _outlets,
                               itemAsString: (outlet) => outlet['nama_outlet'] ?? 'Tanpa Nama',
@@ -522,11 +666,11 @@ class _HomePageState extends State<HomePage> {
                               dropdownDecoratorProps: DropDownDecoratorProps(
                                 dropdownSearchDecoration: InputDecoration(
                                   labelText: "Pilih Outlet",
+                                  hintText: _outlets.isEmpty ? "Memuat atau tidak ada data" : "Pilih outlet lainnya...",
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 12),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                 ),
                               ),
                               onChanged: (value) {
@@ -538,7 +682,6 @@ class _HomePageState extends State<HomePage> {
                                     _branchController.text = value['branch'] ?? '';
                                     _clusterController.text = value['cluster'] ?? value['area'] ?? '';
                                   } else {
-                                    // Reset jika tidak ada outlet dipilih
                                     _idOutletController.clear();
                                     _regionController.clear();
                                     _branchController.clear();
@@ -552,21 +695,27 @@ class _HomePageState extends State<HomePage> {
                                 }
                                 return null;
                               },
+                              enabled: !_isLoading && _outlets.isNotEmpty,
                             ),
                             const SizedBox(height: 16),
-                            _buildTextField(
+
+                            // --- Fields Read Only: ID Outlet, Tanggal ---
+                            /* ... Kode _buildTextField untuk ID Outlet, Tanggal ... */
+                             _buildTextField(
                               controller: _idOutletController,
                               label: 'ID Outlet',
                               readOnly: true,
                             ),
                             const SizedBox(height: 16),
-                            _buildTextField(
+                             _buildTextField(
                               controller: _tokoController,
                               label: 'Tanggal',
                               readOnly: true,
                             ),
                             const SizedBox(height: 16),
-                            // Dropdown Jenis Survei
+
+                            // --- Dropdown Jenis Survei ---
+                            /* ... Kode DropdownButtonFormField Jenis Survei ... */
                             DropdownButtonFormField<String>(
                               isExpanded: true,
                               value: _selectedBrandinganOption,
@@ -582,14 +731,11 @@ class _HomePageState extends State<HomePage> {
                               onChanged: (value) {
                                 setState(() {
                                   _selectedBrandinganOption = value;
-                                  // Reset data spesifik jenis survei sebelumnya
                                   _brandingImageEtalase = null;
                                   _brandingImageTampakDepan = null;
-                                   // Jika memilih Survei Harga, inisialisasi
                                   if (value == "Survei harga") {
                                      _initializeSurveyHarga();
                                   } else {
-                                     // Jika memilih jenis lain, bersihkan data survei harga
                                      _operatorSurveyGroups.clear();
                                      _hargaEntryControllersMap.values.forEach((map) => map.values.forEach((c) => c.dispose()));
                                      _hargaEntryControllersMap.clear();
@@ -605,9 +751,11 @@ class _HomePageState extends State<HomePage> {
                             const SizedBox(height: 16),
 
                             // --- Konten Dinamis Berdasarkan Jenis Survei ---
+
+                            // === SURVEI BRANDING ===
                             if (_selectedBrandinganOption == "Survei branding") ...[
-                              // ... (Kode Image Picker Survei Branding tetap sama) ...
-                               _buildImagePicker(
+                               /* ... Kode _buildImagePicker Etalase & Tampak Depan ... */
+                                _buildImagePicker(
                                 label: "Foto Etalase",
                                 image: _brandingImageEtalase,
                                 onPick: () => _pickImage(ImageSource.camera, (file) => _brandingImageEtalase = file),
@@ -622,8 +770,9 @@ class _HomePageState extends State<HomePage> {
                               ),
                               const SizedBox(height: 16),
                             ],
+
+                            // === SURVEI HARGA (DENGAN PERUBAHAN LABEL & FIELD JUMLAH) ===
                             if (_selectedBrandinganOption == "Survei harga") ...[
-                              // --- List View untuk Grup Operator ---
                               ListView.builder(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
@@ -633,17 +782,21 @@ class _HomePageState extends State<HomePage> {
                                   bool isHidden = group["isHidden"];
                                   List entries = group["entries"];
 
-                                  return Card( // Bungkus setiap grup dengan Card
+                                  return Card(
                                     margin: const EdgeInsets.symmetric(vertical: 8.0),
                                     elevation: 2,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    shape: RoundedRectangleBorder( /* ... Shape ... */
+                                      borderRadius: BorderRadius.circular(10),
+                                      side: BorderSide(color: Colors.grey.shade300)
+                                    ),
                                     child: Padding(
                                       padding: const EdgeInsets.all(12.0),
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          // --- Header Grup (Operator, Paket, Tombol Hide/Show) ---
-                                          Row(
+                                          // Header Grup (Judul, Tombol Hide/Show)
+                                           /* ... Kode Row Header Grup ... */
+                                            Row(
                                             children: [
                                               Expanded(
                                                 child: Text(
@@ -651,30 +804,31 @@ class _HomePageState extends State<HomePage> {
                                                   style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                                                 ),
                                               ),
-                                              IconButton(
-                                                icon: Icon(isHidden ? Icons.visibility_off : Icons.visibility),
-                                                tooltip: isHidden ? 'Tampilkan Detail' : 'Sembunyikan Detail',
-                                                onPressed: () => _toggleGroupVisibility(groupIndex),
+                                              TextButton.icon(
+                                                 icon: Icon(isHidden ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+                                                 label: Text(isHidden ? 'Tampilkan' : 'Sembunyikan', style: const TextStyle(fontSize: 12)),
+                                                 onPressed: () => _toggleGroupVisibility(groupIndex),
+                                                 style: TextButton.styleFrom( /* ... Style ... */
+                                                   foregroundColor: Colors.grey[600],
+                                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                   minimumSize: const Size(0, 30)
+                                                 ),
                                               ),
-                                              // Tombol hapus grup (opsional, jika diperlukan)
-                                              // if (_operatorSurveyGroups.length > 1)
-                                              //   IconButton(
-                                              //     icon: Icon(Icons.delete_forever, color: Colors.red),
-                                              //     tooltip: 'Hapus Grup Operator Ini',
-                                              //     onPressed: () => _removeOperatorGroup(groupIndex), // Anda perlu buat fungsi ini
-                                              //   ),
                                             ],
                                           ),
-                                           if (!isHidden) ...[ // Tampilkan detail jika tidak hidden
-                                             const Divider(),
+                                          // Detail Grup (jika tidak hidden)
+                                           if (!isHidden) ...[
+                                             const Divider(thickness: 1),
                                              const SizedBox(height: 12),
-                                            // Dropdown Operator
-                                            DropdownButtonFormField<String>(
+                                            // Dropdown Operator & Paket
+                                             /* ... Kode Dropdown Operator & Paket (VOUCHER FISIK kapital)... */
+                                            DropdownButtonFormField<String>( // Operator
                                               isExpanded: true,
                                               value: group["operator"],
                                               hint: const Text("Pilih Operator"),
-                                              decoration: InputDecoration(
-                                                labelText: 'Operator',
+                                              decoration: InputDecoration( /* ... Decoration ... */
+                                                labelText: 'Operator *',
                                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                               ),
@@ -686,19 +840,18 @@ class _HomePageState extends State<HomePage> {
                                                   _operatorSurveyGroups[groupIndex]["operator"] = value;
                                                 });
                                               },
-                                              validator: (value) {
+                                              validator: (value) { /* ... Validator ... */
                                                 if (value == null || value.isEmpty) return 'Pilih operator';
                                                 return null;
                                               },
                                             ),
                                             const SizedBox(height: 16),
-                                            // Dropdown Paket
-                                            DropdownButtonFormField<String>(
+                                            DropdownButtonFormField<String>( // Paket
                                               isExpanded: true,
                                               value: group["paket"],
                                               hint: const Text("Pilih Paket"),
-                                              decoration: InputDecoration(
-                                                labelText: 'Paket',
+                                              decoration: InputDecoration( /* ... Decoration ... */
+                                                labelText: 'Paket *',
                                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                               ),
@@ -710,99 +863,139 @@ class _HomePageState extends State<HomePage> {
                                                   _operatorSurveyGroups[groupIndex]["paket"] = value;
                                                 });
                                               },
-                                              validator: (value) {
+                                              validator: (value) { /* ... Validator ... */
                                                 if (value == null || value.isEmpty) return 'Pilih paket';
                                                 return null;
                                               },
                                             ),
-                                            const SizedBox(height: 16),
-                                            // --- List View untuk Entri Harga dalam Grup ---
+                                            const SizedBox(height: 20),
+
+                                            // --- List View untuk Entri Harga/Paket/Jumlah ---
                                             ListView.builder(
                                               shrinkWrap: true,
                                               physics: const NeverScrollableScrollPhysics(),
                                               itemCount: entries.length,
                                               itemBuilder: (context, entryIndex) {
-                                                  // Pastikan controller ada
+                                                  // Ambil controller
                                                   if (_hargaEntryControllersMap[groupIndex] == null) {
                                                       _hargaEntryControllersMap[groupIndex] = {};
                                                   }
                                                   if (_hargaEntryControllersMap[groupIndex]![entryIndex] == null) {
                                                       _hargaEntryControllersMap[groupIndex]![entryIndex] = HargaEntryControllers();
-                                                      // Set initial text if exists in map (misal saat load data)
-                                                      _hargaEntryControllersMap[groupIndex]![entryIndex]!.keteranganController.text = entries[entryIndex]["keterangan"] ?? "";
+                                                      // Set nilai awal jika ada (misal dari data tersimpan)
+                                                      _hargaEntryControllersMap[groupIndex]![entryIndex]!.namaPaketController.text = entries[entryIndex]["nama_paket"] ?? "";
                                                       _hargaEntryControllersMap[groupIndex]![entryIndex]!.hargaController.text = entries[entryIndex]["harga"] ?? "";
+                                                      _hargaEntryControllersMap[groupIndex]![entryIndex]!.jumlahController.text = entries[entryIndex]["jumlah"] ?? "";
                                                   }
-
                                                   HargaEntryControllers controllers = _hargaEntryControllersMap[groupIndex]![entryIndex]!;
 
-
-                                                return Padding(
-                                                  padding: const EdgeInsets.only(bottom: 16.0),
+                                                return Container(
+                                                   padding: const EdgeInsets.all(10).copyWith(bottom: 0),
+                                                   margin: const EdgeInsets.only(bottom: 10),
+                                                   decoration: BoxDecoration( /* ... Decoration ... */
+                                                       color: Colors.grey[50],
+                                                       borderRadius: BorderRadius.circular(8),
+                                                       border: Border.all(color: Colors.grey.shade200)
+                                                   ),
                                                   child: Column(
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     children: [
-                                                      Text("Data Harga Ke-${entryIndex + 1}", style: TextStyle(fontWeight: FontWeight.w500)),
+                                                      Text("   Data Paket Ke-${entryIndex + 1}", style: TextStyle(fontWeight: FontWeight.w500, color: Colors.grey[700])),
                                                       const SizedBox(height: 8),
+
+                                                      // Field Nama Paket (Label diubah)
                                                       _buildTextField(
-                                                        controller: controllers.keteranganController,
-                                                        label: 'Keterangan',
-                                                        onChanged: (val) {
-                                                          // Update map saat text berubah (opsional, bisa saat submit saja)
-                                                           // entries[entryIndex]["keterangan"] = val;
+                                                        controller: controllers.namaPaketController, // Ganti controller
+                                                        label: 'Nama Paket *', // Label diubah
+                                                        hint: 'Contoh: Xtra Combo Lite L 3.5GB',
+                                                        validator: (value) { // Validasi dasar bisa di sini
+                                                           if (value == null || value.trim().isEmpty) {
+                                                             return 'Masukkan nama paket';
+                                                           }
+                                                           return null;
                                                         },
-                                                        // validator dipindahkan ke _submitForm
                                                       ),
                                                       const SizedBox(height: 16),
+
+                                                      // Field Harga
                                                       _buildTextField(
                                                         controller: controllers.hargaController,
-                                                        label: 'Masukkan Harga',
-                                                        keyboardType: TextInputType.number,
-                                                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]' ))], // Hanya angka
-                                                        prefixText: 'Rp.',
-                                                         onChanged: (val) {
-                                                            // Update map saat text berubah (opsional)
-                                                            // entries[entryIndex]["harga"] = val;
-                                                         },
-                                                         // validator dipindahkan ke _submitForm
+                                                        label: 'Harga Satuan *',
+                                                        prefixText: 'Rp ',
+                                                        hint: 'Contoh: 10000 atau 10.000',
+                                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                        inputFormatters: [ FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')) ],
+                                                         validator: (value) { /* ... Validator Harga ... */
+                                                          if (value == null || value.trim().isEmpty) return 'Masukkan harga';
+                                                          final numericString = value.replaceAll('.', '');
+                                                          if (numericString.isEmpty || double.tryParse(numericString) == null) return 'Format angka tidak valid';
+                                                          if (value.split('.').length > 2) return 'Format titik tidak valid';
+                                                           if (double.parse(numericString) <= 0) return 'Harga harus > 0';
+                                                          return null;
+                                                        },
                                                       ),
-                                                      const SizedBox(height: 8),
-                                                      // Tombol Hapus Entri Harga
-                                                      if (entries.length > 1)
-                                                        Align(
-                                                          alignment: Alignment.centerRight,
-                                                          child: TextButton.icon(
-                                                            icon: Icon(Icons.delete, size: 18, color: Colors.red.shade700),
-                                                            label: Text("Hapus Data Harga", style: TextStyle(color: Colors.red.shade700)),
-                                                            onPressed: () => _removeHargaEntry(groupIndex, entryIndex),
-                                                            style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                                                          ),
-                                                        ),
-                                                         if (entryIndex < entries.length - 1) const Divider(height: 24), // Divider antar entri harga
+                                                      const SizedBox(height: 16), // Jarak
+
+                                                      // Field Jumlah (BARU)
+                                                      _buildTextField(
+                                                        controller: controllers.jumlahController, // Controller baru
+                                                        label: 'Jumlah *',
+                                                        hint: 'Jumlah barang/stok',
+                                                        keyboardType: TextInputType.number, // Keyboard angka saja
+                                                        inputFormatters: [ FilteringTextInputFormatter.digitsOnly ], // Hanya izinkan digit
+                                                         validator: (value) {
+                                                           if (value == null || value.trim().isEmpty) {
+                                                             return 'Masukkan jumlah';
+                                                           }
+                                                           final int? jumlah = int.tryParse(value);
+                                                           if (jumlah == null) {
+                                                              return 'Jumlah harus angka'; // Seharusnya tidak terjadi karena digitsOnly
+                                                           }
+                                                           if (jumlah <= 0) {
+                                                               return 'Jumlah harus > 0';
+                                                           }
+                                                           return null;
+                                                         },
+                                                      ),
+                                                      const SizedBox(height: 0), // Kurangi jarak bawah sebelum tombol hapus
+
+                                                      // Tombol Hapus Entri
+                                                      Align( /* ... Tombol Hapus ... */
+                                                        alignment: Alignment.centerRight,
+                                                        child: (entries.length > 1)
+                                                          ? TextButton.icon(
+                                                              icon: Icon(Icons.delete_outline, size: 18, color: Colors.red.shade600),
+                                                              label: Text("Hapus", style: TextStyle(color: Colors.red.shade600, fontSize: 12)),
+                                                              onPressed: () => _removeHargaEntry(groupIndex, entryIndex),
+                                                              style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 5), minimumSize: const Size(0, 25)),
+                                                            )
+                                                          : const SizedBox(height: 25),
+                                                      ),
                                                     ],
                                                   ),
                                                 );
                                               },
                                             ),
-                                            // Tombol Tambah Data Harga (dalam grup ini)
-                                            Align(
+                                            // Tombol Tambah Data Harga/Paket
+                                            Align( /* ... Tombol Tambah Data ... */
                                               alignment: Alignment.centerRight,
                                               child: TextButton.icon(
                                                 icon: const Icon(Icons.add_circle_outline, size: 20),
-                                                label: const Text("Tambah Data Harga"),
-                                                // Aktifkan hanya jika belum mencapai batas
+                                                label: const Text("Tambah Data Paket"), // Ganti Teks
                                                 onPressed: canAddMoreHarga ? () => _addHargaEntry(groupIndex) : null,
-                                                style: TextButton.styleFrom(
+                                                style: TextButton.styleFrom( /* ... Style ... */
                                                    foregroundColor: canAddMoreHarga ? Theme.of(context).primaryColor : Colors.grey,
                                                 ),
                                               ),
                                             ),
                                            ] else ...[
-                                              // Tampilan saat hidden: Tampilkan Operator dan Paket saja
-                                              Padding(
-                                                 padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                              // Tampilan saat hidden
+                                              Padding( /* ... Tampilan Hidden ... */
+                                                 padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
                                                  child: Text(
-                                                     "Operator: ${group['operator'] ?? 'Belum dipilih'} | Paket: ${group['paket'] ?? 'Belum dipilih'}",
-                                                     style: TextStyle(color: Colors.grey.shade700),
+                                                     "Operator: ${group['operator'] ?? '(...)'} | Paket: ${group['paket'] ?? '(...)'}",
+                                                     style: TextStyle(color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                                                     overflow: TextOverflow.ellipsis,
                                                  ),
                                               ),
                                            ]
@@ -814,56 +1007,70 @@ class _HomePageState extends State<HomePage> {
                               ),
                               const SizedBox(height: 10),
                               // Tombol Tambah Operator Lain
-                              Align(
-                                 alignment: Alignment.centerLeft, // Posisikan di kiri
+                              Align( /* ... Tombol Tambah Operator ... */
+                                 alignment: Alignment.centerLeft,
                                  child: ElevatedButton.icon(
                                    icon: const Icon(Icons.add_business_outlined),
                                    label: const Text("Tambah Operator Lain"),
-                                   onPressed: _addOperatorGroup, // Tombol ini selalu aktif
-                                   style: ElevatedButton.styleFrom(
-                                     backgroundColor: Colors.teal, // Warna berbeda
+                                   onPressed: _addOperatorGroup,
+                                   style: ElevatedButton.styleFrom( /* ... Style ... */
+                                     backgroundColor: Colors.teal,
                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                    ),
                                  ),
                               ),
                               const SizedBox(height: 10),
                                // Informasi Batas Maksimal
                               if (!canAddMoreHarga)
-                                Padding(
+                                Padding( /* ... Info Batas Max ... */
                                   padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
-                                  child: Text(
-                                     "Batas maksimal $_maxHargaEntries data harga telah tercapai.",
-                                     style: TextStyle(color: Colors.red.shade700, fontStyle: FontStyle.italic),
+                                  child: Row(
+                                      children: [
+                                         Icon(Icons.info_outline, color: Colors.orange.shade800, size: 16),
+                                         const SizedBox(width: 8),
+                                         Expanded(
+                                           child: Text(
+                                              "Batas maksimal $_maxHargaEntries data paket telah tercapai.",
+                                              style: TextStyle(color: Colors.orange.shade900, fontStyle: FontStyle.italic),
+                                           ),
+                                         ),
+                                      ],
                                   ),
                                 ),
                               const SizedBox(height: 16),
-                            ],
+                            ], // End Survei Harga Section
 
-                            // --- Keterangan Kunjungan & Tombol Submit ---
+                            // --- Keterangan Kunjungan ---
+                            /* ... Kode _buildTextField Keterangan Kunjungan ... */
                             _buildTextField(
                               controller: _keteranganController,
-                              label: 'Keterangan Kunjungan',
-                              hint: 'Masukkan detail kunjungan...',
+                              label: 'Keterangan Kunjungan *',
+                              hint: 'Masukkan detail atau catatan penting selama kunjungan...',
                               maxLines: 5,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) return 'Masukkan keterangan kunjungan';
+                              validator: (value) { /* ... Validator Keterangan ... */
+                                if (value == null || value.trim().isEmpty) return 'Keterangan kunjungan wajib diisi';
+                                if (value.trim().length < 10) return 'Keterangan terlalu pendek (min. 10 karakter)';
                                 return null;
                               },
                             ),
                             const SizedBox(height: 24),
+
+                            // --- Tombol Submit ---
+                            /* ... Kode Tombol Submit ... */
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
                                 onPressed: _submitForm,
-                                style: ElevatedButton.styleFrom(
+                                style: ElevatedButton.styleFrom( /* ... Style ... */
                                   padding: const EdgeInsets.symmetric(vertical: 16),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  backgroundColor: Theme.of(context).primaryColor, // Warna utama tema
+                                  backgroundColor: Colors.redAccent,
                                 ),
                                 child: const Text(
-                                  'Submit',
-                                  style: TextStyle(fontSize: 18, color: Colors.white), // Teks putih
+                                  'Submit Data Survei',
+                                  style: TextStyle(fontSize: 18, color: Colors.white),
                                 ),
                               ),
                             ),
