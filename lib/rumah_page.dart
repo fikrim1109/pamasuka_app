@@ -43,7 +43,7 @@ class _RumahPageState extends State<RumahPage> {
   final _formKey = GlobalKey<FormState>();
 
   // --- API Endpoint ---
-  final String _submitApiUrl = "http://10.0.2.2/test%20api/submit_survey.php"; // Use 10.0.2.2 for Android emulator localhost
+  final String _submitApiUrl = "http://192.168.1.27/test%20api/submit_survey.php"; // Use 192.168.1.27 for Android emulator localhost
 
   // Controller untuk field yang auto-fill dari Outlet
   final TextEditingController _regionController = TextEditingController();
@@ -87,7 +87,6 @@ class _RumahPageState extends State<RumahPage> {
   void initState() {
     super.initState();
     _tokoController.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    _namaController.text = widget.username;
     _fetchOutlets();
   }
 
@@ -147,6 +146,7 @@ class _RumahPageState extends State<RumahPage> {
                _branchController.clear();
                _clusterController.clear();
                _hariController.clear();
+               _namaController.clear();
            }
            // Set date again if needed
           _tokoController.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
@@ -255,6 +255,7 @@ class _RumahPageState extends State<RumahPage> {
       _isLoading = true;
        _outlets = [];
        _selectedOutlet = null;
+       _namaController.clear();
        _idOutletController.clear();
        _regionController.clear();
        _branchController.clear();
@@ -263,7 +264,7 @@ class _RumahPageState extends State<RumahPage> {
     });
     try {
       var url = Uri.parse(
-          'http://10.0.2.2/test%20api/getAreas.php?user_id=${widget.userId}'); // Ganti dengan URL API Anda
+          'http://192.168.1.27/test%20api/getAreas.php?user_id=${widget.userId}'); // Ganti dengan URL API Anda
       var response = await http.get(url).timeout(const Duration(seconds: 15));
       print("Outlet API Response status: ${response.statusCode}");
 
@@ -497,6 +498,7 @@ class _RumahPageState extends State<RumahPage> {
     // Add common fields
     request.fields['user_id'] = widget.userId.toString();
     request.fields['username'] = widget.username;
+    request.fields['nama surveyor'] = _namaController.text.trim();
     request.fields['outlet_id'] = _idOutletController.text;
     request.fields['outlet_nama'] = _selectedOutlet?['nama_outlet'] ?? 'N/A';
     request.fields['region'] = _regionController.text;
@@ -833,6 +835,7 @@ class _RumahPageState extends State<RumahPage> {
                                         _branchController.clear();
                                         _clusterController.clear();
                                         _hariController.clear();
+                                        _namaController.clear();
                                       }
                                     });
                                   },

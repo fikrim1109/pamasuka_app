@@ -43,7 +43,7 @@ class _HomePageState extends State<HomePage> {
   final _formKey = GlobalKey<FormState>();
 
   // --- API Endpoint ---
-  final String _submitApiUrl = "http://10.0.2.2/test%20api/submit_survey.php"; // Use 10.0.2.2 for Android emulator localhost
+  final String _submitApiUrl = "http://192.168.1.27/test%20api/submit_survey.php"; // Use 192.168.1.27 for Android emulator localhost
   
   // Controller untuk field yang auto-fill dari Outlet
   final TextEditingController _regionController = TextEditingController();
@@ -263,7 +263,7 @@ class _HomePageState extends State<HomePage> {
     });
     try {
       var url = Uri.parse(
-          'http://10.0.2.2/test%20api/getAreas.php?user_id=${widget.userId}'); // Ganti dengan URL API Anda
+          'http://192.168.1.27/test%20api/getAreas.php?user_id=${widget.userId}'); // Ganti dengan URL API Anda
       var response = await http.get(url).timeout(const Duration(seconds: 15));
       print("Outlet API Response status: ${response.statusCode}");
 
