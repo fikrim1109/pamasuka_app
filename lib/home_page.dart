@@ -45,6 +45,7 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _branchController = TextEditingController();
   final TextEditingController _clusterController = TextEditingController();
   final TextEditingController _idOutletController = TextEditingController();
+  final TextEditingController _hariController = TextEditingController(); // Hari Kunjungan
 
   // Controller lain
   final TextEditingController _namaController = TextEditingController();
@@ -80,7 +81,7 @@ class _HomePageState extends State<HomePage> {
 
   // State untuk Limit Survei Harga
   int _totalHargaEntriesCount = 0;
-  final int _maxHargaEntries = 10; // Batas maksimal tetap berlaku untuk jumlah BARIS entri
+  final int _maxHargaEntries = 15; // Batas maksimal tetap berlaku untuk jumlah BARIS entri
 
   // Opsi Dropdown Survei Harga (SUDAH DIUBAH SESUAI PERMINTAAN)
   final List<String> _operatorOptions = ["XL", "INDOSAT OOREDO", "AXIS", "SMARTFREN" , "3", "TELKOMSEL"]; // Kapital Semua
@@ -102,6 +103,7 @@ class _HomePageState extends State<HomePage> {
     _namaController.dispose();
     _tokoController.dispose();
     _idOutletController.dispose();
+    _hariController.dispose();
     _keteranganController.dispose();
     // Dispose semua controller dinamis survei harga
     _hargaEntryControllersMap.values.forEach((entryMap) {
@@ -210,6 +212,7 @@ class _HomePageState extends State<HomePage> {
        _regionController.clear();
        _branchController.clear();
        _clusterController.clear();
+       _hariController.clear();
     });
     try {
       var url = Uri.parse(
@@ -229,6 +232,7 @@ class _HomePageState extends State<HomePage> {
           String initialRegion = '';
           String initialBranch = '';
           String initialCluster = '';
+          String initialHari = '';
 
           if (fetchedOutlets.isNotEmpty) {
             initialOutlet = fetchedOutlets[0];
@@ -236,6 +240,7 @@ class _HomePageState extends State<HomePage> {
             initialRegion = initialOutlet['region'] ?? '';
             initialBranch = initialOutlet['branch'] ?? '';
             initialCluster = initialOutlet['cluster'] ?? initialOutlet['area'] ?? '';
+            initialHari = initialOutlet['hari'] ?? '';
             print("Outlet pertama dipilih: ${initialOutlet['nama_outlet']}");
           } else {
              print("Tidak ada data outlet ditemukan.");
@@ -248,6 +253,7 @@ class _HomePageState extends State<HomePage> {
             _regionController.text = initialRegion;
             _branchController.text = initialBranch;
             _clusterController.text = initialCluster;
+            _hariController.text = initialHari;
           });
 
         } else {
@@ -414,6 +420,7 @@ class _HomePageState extends State<HomePage> {
     print("Region: ${_regionController.text}");
     print("Branch: ${_branchController.text}");
     print("Cluster: ${_clusterController.text}");
+    print("Hari: ${_hariController.text}");
     print("Tanggal: ${_tokoController.text}");
     print("Jenis Survei: $_selectedBrandinganOption");
 
@@ -641,6 +648,11 @@ class _HomePageState extends State<HomePage> {
                               readOnly: true,
                             ),
                             const SizedBox(height: 16),
+                            _buildTextField(controller: _hariController, 
+                             label: 'Hari',
+                             readOnly: true,
+                            ),
+                            const SizedBox(height: 16),
 
                             // --- Dropdown Outlet ---
                             /* ... Kode DropdownSearch Outlet ... */
@@ -681,11 +693,13 @@ class _HomePageState extends State<HomePage> {
                                     _regionController.text = value['region'] ?? '';
                                     _branchController.text = value['branch'] ?? '';
                                     _clusterController.text = value['cluster'] ?? value['area'] ?? '';
+                                    _hariController.text = value['hari'] ?? '';
                                   } else {
                                     _idOutletController.clear();
                                     _regionController.clear();
                                     _branchController.clear();
                                     _clusterController.clear();
+                                    _hariController.clear();
                                   }
                                 });
                               },
@@ -706,6 +720,7 @@ class _HomePageState extends State<HomePage> {
                               label: 'ID Outlet',
                               readOnly: true,
                             ),
+
                             const SizedBox(height: 16),
                              _buildTextField(
                               controller: _tokoController,
