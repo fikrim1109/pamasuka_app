@@ -757,6 +757,12 @@ class _RumahPageState extends State<RumahPage> {
                               children: [
                                 // --- Fields Read Only: Region, Branch, Cluster, Nama ---
                                 /* ... Kode _buildTextField untuk Region, Branch, Cluster, Nama ... */
+                                const SizedBox(height: 16),
+                                _buildTextField(
+                                  controller: _namaController,
+                                  label: 'Nama Surveyor',
+                                ),
+                                const SizedBox(height: 16), 
                                 _buildTextField(
                                   controller: _regionController,
                                   label: 'Region',
@@ -773,20 +779,13 @@ class _RumahPageState extends State<RumahPage> {
                                   controller: _clusterController,
                                   label: 'Cluster',
                                   readOnly: true,
-                                ),
-                                const SizedBox(height: 16),
-                                _buildTextField(
-                                  controller: _namaController,
-                                  label: 'Nama Surveyor', // More descriptive label
-                                  readOnly: true,
-                                ),
+                                ),  
                                 const SizedBox(height: 16),
                                 _buildTextField(controller: _hariController,
                                 label: 'Hari Kunjungan (Outlet)', // More descriptive
                                 readOnly: true,
                                 ),
                                 const SizedBox(height: 16),
-
 
                                 // --- Dropdown Outlet ---
                                 /* ... Kode DropdownSearch Outlet (No Change) ... */
