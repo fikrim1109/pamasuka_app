@@ -35,7 +35,7 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       // Mengirim request ke server
-      var url = Uri.parse('http://192.168.1.27/test%20api/login.php');
+      var url = Uri.parse('http://10.0.2.2/test%20api/login.php');
       var response = await http.post(url, body: {
         'username': _usernameController.text,
         'password': _passwordController.text,
