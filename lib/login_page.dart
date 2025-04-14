@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pamasuka/menu_page.dart'; // Ensure this import path is correct for your project
+import 'package:pamasuka/lupapage.dart'; // <-- ADDED IMPORT for Forgot Password
 
 // --- Base URL for API calls ---
 // ** IMPORTANT: Replace with your actual server address/domain and path **
@@ -24,6 +25,7 @@ class _LoginPageState extends State<LoginPage> {
 
   final Color startColor = const Color(0xFFFFB6B6);
   final Color endColor = const Color(0xFFFF8E8E);
+  final Color primaryColor = const Color(0xFFC0392B); // Define primary color
 
   // --- Helper Function to Show Snack Bar ---
   void _showSnackBar(String message, {bool isError = false}) {
@@ -60,8 +62,14 @@ class _LoginPageState extends State<LoginPage> {
       // Send request with timeout
       final response = await http.post(
         url,
-        // Send as form data (default for Map<String, String> body)
-        body: {
+        // Sending as form data implicitly by http package when body is Map<String, String>
+        // If your updated PHP expects JSON, change headers and body:
+        // headers: {'Content-Type': 'application/json'},
+        // body: json.encode({
+        //   'username': username,
+        //   'password': password,
+        // }),
+        body: { // Keep as form data to match updated PHP which checks both JSON and POST
           'username': username,
           'password': password,
         },
@@ -95,6 +103,7 @@ class _LoginPageState extends State<LoginPage> {
       } else {
         // Handle non-200 status codes (e.g., 404, 500)
          _showSnackBar('Kesalahan server: ${response.statusCode}. Silakan coba lagi nanti.', isError: true); // Indonesian message
+         print("Server error response: ${response.body}"); // Log server response body
       }
     } on TimeoutException {
         _showSnackBar('Koneksi ke server time out. Periksa koneksi internet Anda.', isError: true); // Indonesian message
@@ -165,8 +174,8 @@ class _LoginPageState extends State<LoginPage> {
                         mainAxisSize: MainAxisSize.min, // Card size wraps content
                         children: [
                           // Title
-                          const Center(
-                            child: Text('Login', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFFC0392B)))),
+                           Center(
+                            child: Text('Login', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: primaryColor))),
                           const SizedBox(height: 20),
                           // Username Field
                           TextField(
@@ -195,7 +204,7 @@ class _LoginPageState extends State<LoginPage> {
                               // Disable button while loading
                               onPressed: _isLoading ? null : _login,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFC0392B),
+                                backgroundColor: primaryColor,
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(vertical: 16),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
@@ -208,6 +217,25 @@ class _LoginPageState extends State<LoginPage> {
                                   : const Text('Login', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                             ),
                           ),
+                          const SizedBox(height: 16), // Add space before forgot password
+                          // --- FORGOT PASSWORD LINK (MODIFIED) ---
+                          TextButton(
+                            onPressed: () {
+                              // Navigate to Forgot Password Page
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const LupaPasswordPage()), // Navigate to LupaPasswordPage
+                              );
+                            },
+                            child: Text(
+                              'Lupa Kata Sandi?', // Indonesian
+                              style: TextStyle(
+                                color: primaryColor, // Match theme color
+                                // decoration: TextDecoration.underline, // Optional underline
+                              ),
+                            ),
+                          ),
+                          // --- END OF MODIFICATION ---
                         ],
                       ),
                     ),
@@ -226,16 +254,16 @@ class _LoginPageState extends State<LoginPage> {
   InputDecoration _inputDecoration(String label, IconData icon) {
      return InputDecoration(
        labelText: label,
-       prefixIcon: Icon(icon, color: const Color(0xFFC0392B)),
+       prefixIcon: Icon(icon, color: primaryColor),
        filled: true,
-       fillColor: Colors.white,
+       fillColor: Colors.white.withOpacity(0.9), // Slightly transparent
        border: OutlineInputBorder(
          borderRadius: BorderRadius.circular(12),
          borderSide: BorderSide.none, // Hide border side when filled
        ),
        focusedBorder: OutlineInputBorder( // Add a border highlight when focused
          borderRadius: BorderRadius.circular(12),
-         borderSide: const BorderSide(color: Color(0xFFC0392B), width: 1.5),
+         borderSide: BorderSide(color: primaryColor, width: 1.5),
        ),
        // Add hint style, error style etc. if needed
      );

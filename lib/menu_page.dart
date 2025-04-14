@@ -1,11 +1,17 @@
+// File: lib/menu_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Import untuk SystemUiOverlayStyle jika diperlukan
-import 'package:pamasuka/rumah_page.dart'; // Pastikan path import benar
-import 'home_page.dart'; // Pastikan path import benar
-import 'login_page.dart'; // Pastikan path import benar
+import 'package:pamasuka/akunpage.dart'; // <-- Import for Account Page is correct
+import 'package:pamasuka/login_page.dart'; // <-- Import for Login Page is correct
 
-// --- Definisikan ID Super User ---
-const int superUserId = 785;
+// --- IMPORTANT: Ensure these paths correctly point to your ACTUAL page files ---
+import 'package:pamasuka/home_page.dart'; // <-- Should import the REAL HomePage
+import 'package:pamasuka/rumah_page.dart'; // <-- Should import the REAL RumahPage
+// --- ---
+
+// --- Definisikan Rentang ID User Normal (sesuai PHP) ---
+const int MIN_NORMAL_USER_ID_RANGE = 6;
+const int MAX_NORMAL_USER_ID_RANGE = 784;
 // --- ---
 
 class MenuPage extends StatelessWidget {
@@ -17,22 +23,18 @@ class MenuPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Tentukan judul berdasarkan tipe user (opsional, tapi bisa menambah kejelasan)
-    // String pageTitle = userId == superUserId ? 'Admin Dashboard' : 'Samalonian APP';
-
     return Scaffold(
       appBar: AppBar(
-        // title: Text(pageTitle, ...), // Jika ingin judul dinamis
         title: const Text(
           'Samalonian APP',
           style: TextStyle(
-            color: Colors.white, // Warna teks AppBar jadi putih
+            color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.redAccent, // Warna background AppBar disamakan
+        backgroundColor: Colors.redAccent,
         elevation: 2,
         systemOverlayStyle: SystemUiOverlayStyle.light.copyWith(
           statusBarColor: Colors.transparent,
@@ -41,7 +43,7 @@ class MenuPage extends StatelessWidget {
         iconTheme: const IconThemeData(
           color: Colors.white,
         ),
-        automaticallyImplyLeading: false, // Sembunyikan tombol back default jika tidak diperlukan
+        automaticallyImplyLeading: false,
       ),
       body: Container(
         width: double.infinity,
@@ -62,9 +64,13 @@ class MenuPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Image.asset(
-                'images/Samalonian APP.png', // Pastikan path gambar benar
+                'images/Samalonian APP.png',
                 height: 180,
                 fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  print("Error loading menu logo: $error");
+                  return const Icon(Icons.broken_image, size: 100, color: Colors.grey);
+                },
               ),
               const SizedBox(height: 24),
               Padding(
@@ -113,6 +119,7 @@ class MenuPage extends StatelessWidget {
   }
 }
 
+// --- Bottom Navigation Bar Widget ---
 class BottomNavBar extends StatelessWidget {
   final String username;
   final int userId;
@@ -120,14 +127,14 @@ class BottomNavBar extends StatelessWidget {
   const BottomNavBar({Key? key, required this.username, required this.userId})
       : super(key: key);
 
-  // --- Fungsi untuk menampilkan dialog akses ditolak ---
+  // --- Helper function to show access denied dialog ---
   void _showAccessDeniedDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Row( // Menggunakan Row untuk ikon dan teks
+        title: const Row(
           children: [
-            Icon(Icons.cancel_outlined, color: Colors.red, size: 28), // Ikon X merah
+            Icon(Icons.cancel_outlined, color: Colors.red, size: 28),
             SizedBox(width: 10),
             Text('Akses Ditolak'),
           ],
@@ -135,7 +142,7 @@ class BottomNavBar extends StatelessWidget {
         content: const Text('Anda tidak memiliki izin untuk mengakses halaman ini.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context), // Tutup dialog
+            onPressed: () => Navigator.pop(context),
             child: const Text('OK'),
           ),
         ],
@@ -146,18 +153,24 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // --- Determine User Type Based on ID Range ---
+    final bool isNormalUser = (userId >= MIN_NORMAL_USER_ID_RANGE && userId <= MAX_NORMAL_USER_ID_RANGE);
+    // --- ---
+
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // --- Item Outlet PJP (HomePage) ---
+
+          // --- Navigation Item: Outlet PJP (HomePage) ---
           _NavBarItem(
             icon: Icons.store_mall_directory_outlined,
             label: 'Outlet PJP',
             onTap: () {
-              // Logika Akses: Hanya user biasa (bukan super user) yang bisa akses
-              if (userId != superUserId) {
+              // Access Logic: Allow ONLY if user is WITHIN the normal range [6, 784]
+              if (isNormalUser) {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -165,38 +178,59 @@ class BottomNavBar extends StatelessWidget {
                   ),
                 );
               } else {
-                // Tampilkan alert akses ditolak untuk super user
+                // Show access denied for users outside the normal range
                 _showAccessDeniedDialog(context);
               }
             },
           ),
-          // --- Item Outlet Non PJP (RumahPage) ---
+
+          // --- Navigation Item: Outlet Non PJP (RumahPage) ---
           _NavBarItem(
             icon: Icons.home_work_outlined,
             label: 'Outlet Non PJP',
             onTap: () {
-              // Logika Akses: Hanya super user yang bisa akses
-              if (userId == superUserId) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => RumahPage(username: username, userId: userId),
-                  ),
-                );
+              // Access Logic: Allow ONLY if user is OUTSIDE the normal range [6, 784]
+              if (!isNormalUser) {
+                 Navigator.push(
+                   context,
+                   MaterialPageRoute(
+                     builder: (context) => RumahPage(username: username, userId: userId),
+                   ),
+                 );
               } else {
-                // Tampilkan alert akses ditolak untuk user biasa
+                // Show access denied for users within the normal range
                 _showAccessDeniedDialog(context);
               }
             },
           ),
-          // --- Item Logout ---
+
+          // --- Navigation Item: Akun (AkunPage) ---
+          _NavBarItem(
+            icon: Icons.account_circle_outlined,
+            label: 'Akun',
+            onTap: () {
+              // Access Logic: ALL users can access Account page
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AkunPage(
+                    userId: userId,
+                    username: username,
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // --- Navigation Item: Logout ---
           _NavBarItem(
             icon: Icons.logout,
             label: 'Logout',
             onTap: () {
-              // Logout bisa diakses semua user
+              // Access Logic: ALL users can logout
               showDialog(
                 context: context,
+                barrierDismissible: false,
                 builder: (context) => AlertDialog(
                   title: const Text('Konfirmasi Logout'),
                   content: const Text('Apakah Anda yakin ingin keluar?'),
@@ -207,7 +241,7 @@ class BottomNavBar extends StatelessWidget {
                     ),
                     TextButton(
                       onPressed: () {
-                        Navigator.pop(context); // Tutup dialog
+                        Navigator.pop(context);
                         Navigator.pushAndRemoveUntil(
                           context,
                           MaterialPageRoute(builder: (context) => const LoginPage()),
@@ -227,7 +261,8 @@ class BottomNavBar extends StatelessWidget {
   }
 }
 
-// Widget _NavBarItem tidak perlu diubah, hanya menerima properti
+// --- Reusable Bottom Navigation Bar Item Widget ---
+// (No changes needed here)
 class _NavBarItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -248,7 +283,7 @@ class _NavBarItem extends StatelessWidget {
         splashColor: Colors.red.withOpacity(0.1),
         highlightColor: Colors.red.withOpacity(0.05),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 10.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -276,3 +311,7 @@ class _NavBarItem extends StatelessWidget {
     );
   }
 }
+
+// ------------- IMPORTANT ------------------
+// Ensure 'home_page.dart' and 'rumah_page.dart' exist and are correctly imported.
+// ------------------------------------------
