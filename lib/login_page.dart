@@ -189,7 +189,7 @@ class _LoginPageState extends State<LoginPage> {
                   // Consider managing asset paths in a separate constants file (e.g., lib/constants/app_assets.dart)
                   // for better maintainability. Example: Image.asset(AppAssets.logo, ...)
                   Image.asset(
-                    'images/Samalonian APP.png', // Ensure path is correct and in pubspec.yaml
+                    'images/Samalonian_app.png', // Ensure path is correct and in pubspec.yaml
                     height: MediaQuery.of(context).size.height * 0.18, // Adjusted height slightly
                     errorBuilder: (context, error, stackTrace) {
                        print("Error loading logo: $error");

@@ -75,7 +75,7 @@ class MenuPage extends StatelessWidget {
 
               // IMPROVEMENT: Added comment recommending asset constants
               Image.asset(
-                'images/Samalonian APP.png', // Ensure path is correct and in pubspec.yaml
+                'images/Samalonian_app.png', // Ensure path is correct and in pubspec.yaml
                 height: MediaQuery.of(context).size.height * 0.22, // Adjusted height slightly if needed
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
