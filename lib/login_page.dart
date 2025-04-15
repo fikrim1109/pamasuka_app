@@ -8,7 +8,7 @@ import 'package:pamasuka/lupapage.dart'; // <-- ADDED IMPORT for Forgot Password
 
 // --- Base URL for API calls ---
 // ** IMPORTANT: Replace with your actual server address/domain and path **
-const String _apiBaseUrl = 'http://10.0.2.2/test%20api'; // 10.0.2.2 for Android emulator -> host localhost
+const String _apiBaseUrl = 'https://tunnel.jato.my.id/test%20api'; // 10.0.2.2 for Android emulator -> host localhost
 // ---
 
 class LoginPage extends StatefulWidget {

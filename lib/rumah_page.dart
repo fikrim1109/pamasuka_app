@@ -44,8 +44,8 @@ class _RumahPageState extends State<RumahPage> {
   final _formKey = GlobalKey<FormState>();
 
   // --- API Endpoint ---
-  final String _submitApiUrl = "http://10.0.2.2/test%20api/submit_survey.php"; // Use 192.168.1.27 for Android emulator localhost
-  final String _outletApiUrl = "http://10.0.2.2/test%20api/getAreas.php"; // Tambahkan URL Outlet API
+  final String _submitApiUrl = "https://tunnel.jato.my.id/test%20api/submit_survey.php"; // Use 192.168.1.27 for Android emulator localhost
+  final String _outletApiUrl = "https://tunnel.jato.my.id/test%20api/getAreas.php"; // Tambahkan URL Outlet API
 
   // Controller untuk field yang auto-fill dari Outlet
   final TextEditingController _regionController = TextEditingController();

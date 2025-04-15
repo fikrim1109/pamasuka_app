@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 // Use the same base URL as defined in login_page.dart or define it globally
-const String _apiBaseUrl = 'http://10.0.2.2/test%20api'; // Adjust if needed
+const String _apiBaseUrl = 'https://tunnel.jato.my.id/test%20api'; // Adjust if needed
 
 class AkunPage extends StatefulWidget {
   final int userId;

@@ -44,8 +44,8 @@ class _HomePageState extends State<HomePage> {
 
   // --- API Endpoint ---
   // Gunakan 10.0.2.2 untuk localhost emulator Android, ganti dengan IP Anda jika menguji di perangkat fisik
-  final String _submitApiUrl = "http://10.0.2.2/test%20api/submit_survey.php";
-  final String _outletApiUrl = "http://10.0.2.2/test%20api/getAreas.php"; // URL API outlet diekstrak
+  final String _submitApiUrl = "https://tunnel.jato.my.id/test%20api/submit_survey.php";
+  final String _outletApiUrl = "https://tunnel.jato.my.id/test%20api/getAreas.php"; // URL API outlet diekstrak
 
   // Controller untuk field yang terisi otomatis dari Outlet
   final TextEditingController _regionController = TextEditingController();

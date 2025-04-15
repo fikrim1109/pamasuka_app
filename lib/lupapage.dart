@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:pamasuka/login_page.dart'; // For navigation back to login
 
 // Use the same base URL as defined in login_page.dart or define it globally
-const String _apiBaseUrl = 'http://10.0.2.2/test%20api';
+const String _apiBaseUrl = 'https://tunnel.jato.my.id/test%20api';
 
 // Enum to manage the current step in the forgot password flow
 enum ForgotPasswordStep { enterUsername, answerQuestion, resetPassword }
