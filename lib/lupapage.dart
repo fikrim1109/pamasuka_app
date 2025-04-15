@@ -5,8 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pamasuka/login_page.dart'; // For navigation back to login
 
-// Use the same base URL as defined in login_page.dart or define it globally
-const String _apiBaseUrl = 'https://tunnel.jato.my.id/test%20api';
+// Use the same base URL as defined elsewhere or keep it here if needed
+// Ensure consistency across files that use the API
+const String _apiBaseUrl = 'https://tunnel.jato.my.id/test%20api'; // Kept as requested
 
 // Enum to manage the current step in the forgot password flow
 enum ForgotPasswordStep { enterUsername, answerQuestion, resetPassword }
@@ -27,18 +28,20 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
 
   // --- State Variables ---
   ForgotPasswordStep _currentStep = ForgotPasswordStep.enterUsername;
-  String _username = ''; // Store username after step 1
+  String _username = ''; // Store username after step 1 verification
   String _securityQuestion = ''; // Store fetched question
-  bool _isLoading = false; // General loading indicator
-  String _errorMessage = ''; // To display errors specific to a step
+  bool _isLoading = false; // General loading indicator for the current step's action
+  String _errorMessage = ''; // To display errors specific to the current step
 
+  // Form Keys for each step to manage validation independently
   final GlobalKey<FormState> _usernameFormKey = GlobalKey<FormState>();
   final GlobalKey<FormState> _answerFormKey = GlobalKey<FormState>();
   final GlobalKey<FormState> _resetPasswordFormKey = GlobalKey<FormState>();
 
-  final Color startColor = const Color(0xFFFFB6B6); // Match theme
-  final Color endColor = const Color(0xFFFF8E8E);   // Match theme
-  final Color primaryColor = const Color(0xFFC0392B); // Match theme accent
+  // Theme Colors (Consider defining these globally if used across many pages)
+  final Color startColor = const Color(0xFFFFB6B6);
+  final Color endColor = const Color(0xFFFF8E8E);
+  final Color primaryColor = const Color(0xFFC0392B);
 
   @override
   void dispose() {
@@ -57,178 +60,193 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
         content: Text(message),
         backgroundColor: isError ? Colors.redAccent : Colors.green,
         behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: isError ? 4 : 3), // Show errors longer
+        duration: Duration(seconds: isError ? 4 : 3),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(10),
       ),
     );
   }
 
-  // --- Step 1: Fetch Security Question ---
-  Future<void> _fetchSecurityQuestion() async {
-    if (!_usernameFormKey.currentState!.validate()) return;
-
-    if (!mounted) return;
+  // --- API Helper: Generic Request Handling ---
+  // IMPROVEMENT: Extracted common API request logic to reduce repetition
+  Future<Map<String, dynamic>?> _makeApiRequest({
+    required String endpoint,
+    required Map<String, dynamic> body,
+    required String loadingMessage,
+    required String errorMessagePrefix,
+    String method = 'POST', // Default to POST, allow GET
+  }) async {
+    if (!mounted) return null;
     setState(() {
       _isLoading = true;
-      _errorMessage = ''; // Clear previous error
-      _username = _usernameController.text.trim(); // Store username
+      _errorMessage = ''; // Clear previous step error
     });
 
-    // Use GET request as defined in getsecurityquestion.php
-    final url = Uri.parse('$_apiBaseUrl/getsecurityquestion.php?username=${Uri.encodeComponent(_username)}'); // URL encode username
+    final url = Uri.parse('$_apiBaseUrl/$endpoint');
+    http.Response response;
 
     try {
-      final response = await http.get(url).timeout(const Duration(seconds: 15));
-      if (!mounted) return;
+      if (method.toUpperCase() == 'GET') {
+        // For GET, append parameters to URL
+        final queryString = Uri(queryParameters: body.map((key, value) => MapEntry(key, value.toString()))).query;
+        final fullUrl = Uri.parse('$url?$queryString');
+        response = await http.get(fullUrl).timeout(const Duration(seconds: 15));
+      } else { // POST
+        response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode(body),
+        ).timeout(const Duration(seconds: 15));
+      }
+
+      if (!mounted) return null;
 
       final data = json.decode(response.body);
 
-      if (response.statusCode == 200 && data['success'] == true) {
-        setState(() {
-          _securityQuestion = data['question'];
-          _currentStep = ForgotPasswordStep.answerQuestion; // Move to next step
-        });
+      if (response.statusCode == 200 && data is Map<String, dynamic> && data['success'] == true) {
+         return data; // Return successful data
       } else {
-        // Keep user on the same step but show error
-        setState(() {
-          _errorMessage = data['message'] ?? 'Gagal mengambil pertanyaan keamanan.'; // Indonesian
-        });
+        // Handle API errors (success: false or non-200 status)
+        final String message = data is Map<String, dynamic> ? (data['message'] ?? 'Unknown API error.') : 'Invalid response structure.';
+        setState(() { _errorMessage = '$errorMessagePrefix: $message'; });
+        return null; // Indicate failure
       }
     } on TimeoutException {
-      setState(() { _errorMessage = 'Koneksi time out. Silakan coba lagi.'; }); // Indonesian
-    } on FormatException {
-       setState(() { _errorMessage = 'Format respons server tidak valid.'; }); // Indonesian
+      setState(() { _errorMessage = '$errorMessagePrefix: Connection timed out.'; });
+      return null;
+    } on FormatException catch (e) {
+      setState(() { _errorMessage = '$errorMessagePrefix: Invalid server response format.'; });
+      print("API FormatException ($endpoint): $e");
+      return null;
+    } on http.ClientException catch (e) {
+      setState(() { _errorMessage = '$errorMessagePrefix: Network error: ${e.message}'; });
+      print("API ClientException ($endpoint): $e");
+       return null;
     } catch (e) {
-      setState(() { _errorMessage = 'Terjadi kesalahan jaringan. Periksa koneksi Anda.'; }); // Indonesian
-      print("Fetch question error: $e");
+      setState(() { _errorMessage = '$errorMessagePrefix: An unexpected error occurred.'; });
+      print("API General Exception ($endpoint): $e");
+      return null;
     } finally {
       if (mounted) {
         setState(() { _isLoading = false; });
       }
     }
+  }
+
+
+  // --- Step 1: Fetch Security Question ---
+  Future<void> _fetchSecurityQuestion() async {
+    // Validate the specific form for this step
+    if (!_usernameFormKey.currentState!.validate()) return;
+
+    final String currentUsername = _usernameController.text.trim();
+    final data = await _makeApiRequest(
+        endpoint: 'getsecurityquestion.php',
+        // Use GET as per original code comment (php script likely checks $_GET)
+        method: 'GET',
+        // For GET, parameters are usually in the URL, so pass them as 'body' for helper
+        body: {'username': currentUsername},
+        loadingMessage: 'Fetching question...',
+        errorMessagePrefix: 'Failed to fetch question',
+    );
+
+    if (data != null && data['question'] != null) {
+      // Success: Update state and move to next step
+      if (mounted) {
+          setState(() {
+              _username = currentUsername; // Store username only on success
+              _securityQuestion = data['question'];
+              _currentStep = ForgotPasswordStep.answerQuestion;
+              _securityAnswerController.clear(); // Clear answer field for new step
+          });
+       }
+    }
+    // Error message is handled within _makeApiRequest
   }
 
   // --- Step 2: Verify Security Answer ---
   Future<void> _verifySecurityAnswer() async {
+     // Validate the specific form for this step
     if (!_answerFormKey.currentState!.validate()) return;
 
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _errorMessage = ''; // Clear previous error
-    });
+    final data = await _makeApiRequest(
+        endpoint: 'verifysecurityanswer.php',
+        body: {
+          'username': _username, // Use stored username
+          'answer': _securityAnswerController.text.trim(),
+        },
+        loadingMessage: 'Verifying answer...',
+        errorMessagePrefix: 'Failed to verify answer',
+    );
 
-    final url = Uri.parse('$_apiBaseUrl/verifysecurityanswer.php');
-    final body = json.encode({
-      'username': _username, // Use stored username
-      'answer': _securityAnswerController.text.trim(),
-    });
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'}, // PHP expects JSON
-        body: body,
-      ).timeout(const Duration(seconds: 15));
-
-      if (!mounted) return;
-
-      final data = json.decode(response.body);
-
-      if (response.statusCode == 200 && data['success'] == true && data['correct'] == true) {
-        // Answer is correct, move to next step
-        setState(() {
-          _currentStep = ForgotPasswordStep.resetPassword; // Move to final step
-        });
-      } else {
-        // Handle incorrect answer or other errors from backend
-        setState(() {
-          _errorMessage = data['message'] ?? 'Gagal memverifikasi jawaban.'; // Indonesian
-          // Don't clear the answer field immediately, let user retry
-        });
-      }
-    } on TimeoutException {
-       setState(() { _errorMessage = 'Koneksi time out. Silakan coba lagi.'; }); // Indonesian
-    } on FormatException {
-       setState(() { _errorMessage = 'Format respons server tidak valid.'; }); // Indonesian
-    } catch (e) {
-       setState(() { _errorMessage = 'Terjadi kesalahan jaringan. Periksa koneksi Anda.'; }); // Indonesian
-       print("Verify answer error: $e");
-    } finally {
-       if (mounted) {
-         setState(() { _isLoading = false; });
-       }
+     if (data != null && data['correct'] == true) {
+       // Success: Move to reset password step
+        if(mounted){
+             setState(() {
+                _currentStep = ForgotPasswordStep.resetPassword;
+                _newPasswordController.clear(); // Clear password fields for new step
+                _confirmPasswordController.clear();
+             });
+        }
+    } else if (data != null && data['correct'] == false) {
+        // API indicates answer was incorrect, keep user on this step
+        if(mounted) {
+            setState(() {
+                 _errorMessage = data['message'] ?? 'Jawaban keamanan salah.';
+            });
+        }
     }
+     // Other errors handled by _makeApiRequest
   }
 
   // --- Step 3: Reset Password ---
   Future<void> _resetPassword() async {
+    // Validate the specific form for this step
     if (!_resetPasswordFormKey.currentState!.validate()) return;
 
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _errorMessage = ''; // Clear previous error
-    });
+    final data = await _makeApiRequest(
+        endpoint: 'resetpassword.php',
+        body: {
+          'username': _username, // Use stored username
+          'newPassword': _newPasswordController.text, // Send the new password
+        },
+        loadingMessage: 'Resetting password...',
+        errorMessagePrefix: 'Failed to reset password',
+    );
 
-    final url = Uri.parse('$_apiBaseUrl/resetpassword.php');
-     final body = json.encode({
-      'username': _username, // Use stored username
-      'newPassword': _newPasswordController.text, // Send the new password
-    });
-
-    try {
-       final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'}, // PHP expects JSON
-        body: body,
-      ).timeout(const Duration(seconds: 15));
-
-      if (!mounted) return;
-
-      final data = json.decode(response.body);
-
-       if (response.statusCode == 200 && data['success'] == true) {
-         // Show success message and navigate back to login
-         _showSnackBar(data['message'] ?? 'Kata sandi berhasil direset.'); // Indonesian
+     if (data != null) {
+       // Success: Show success message and navigate back to login
+       _showSnackBar(data['message'] ?? 'Kata sandi berhasil direset.');
+       if(mounted) {
          // Use pushAndRemoveUntil to clear stack and go to login
-         // Ensure context is still valid before navigating
-         if(mounted) {
-           Navigator.of(context).pushAndRemoveUntil(
-             MaterialPageRoute(builder: (context) => const LoginPage()),
-             (Route<dynamic> route) => false, // Remove all previous routes
-           );
-         }
-       } else {
-         // Stay on reset page but show error
-         setState(() {
-           _errorMessage = data['message'] ?? 'Gagal mereset kata sandi.'; // Indonesian
-         });
+         Navigator.of(context).pushAndRemoveUntil(
+           MaterialPageRoute(builder: (context) => const LoginPage()),
+           (Route<dynamic> route) => false, // Remove all previous routes
+         );
        }
-    } on TimeoutException {
-       setState(() { _errorMessage = 'Koneksi time out. Silakan coba lagi.'; }); // Indonesian
-    } on FormatException {
-       setState(() { _errorMessage = 'Format respons server tidak valid.'; }); // Indonesian
-    } catch (e) {
-       setState(() { _errorMessage = 'Terjadi kesalahan jaringan. Periksa koneksi Anda.'; }); // Indonesian
-       print("Reset password error: $e");
-    } finally {
-      // Only turn off loading if the widget is still in the tree
-      if (mounted) {
-        setState(() { _isLoading = false; });
-      }
-    }
+     }
+    // Errors handled by _makeApiRequest
   }
 
   // --- Build UI based on current step ---
   Widget _buildCurrentStepWidget() {
+    // Key is essential for AnimatedSwitcher to detect changes correctly
+    Widget stepWidget;
     switch (_currentStep) {
       case ForgotPasswordStep.enterUsername:
-        return _buildUsernameStep();
+        stepWidget = _buildUsernameStep();
+        break;
       case ForgotPasswordStep.answerQuestion:
-        return _buildAnswerStep();
+        stepWidget = _buildAnswerStep();
+        break;
       case ForgotPasswordStep.resetPassword:
-        return _buildResetPasswordStep();
+        stepWidget = _buildResetPasswordStep();
+        break;
     }
+    return Container(
+      key: ValueKey<ForgotPasswordStep>(_currentStep),
+      child: stepWidget,
+    );
   }
 
   // --- UI for Step 1: Enter Username ---
@@ -236,31 +254,33 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
     return Form(
       key: _usernameFormKey,
       child: Column(
-        mainAxisSize: MainAxisSize.min, // Card wraps content
-        crossAxisAlignment: CrossAxisAlignment.stretch, // Make button full width
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'Masukkan Nama Pengguna Anda', // Indonesian
+            'Masukkan Nama Pengguna Anda',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87),
             textAlign: TextAlign.center,
            ),
           const SizedBox(height: 25),
           TextFormField(
             controller: _usernameController,
-            decoration: _inputDecoration('Nama Pengguna', Icons.person_search_outlined), // Indonesian
+            decoration: _inputDecoration('Nama Pengguna', Icons.person_search_outlined),
             keyboardType: TextInputType.text,
              textInputAction: TextInputAction.done,
-             autofocus: true, // Focus this field first
+             enabled: !_isLoading, // Disable when loading
+             autofocus: true,
              onFieldSubmitted: (_) => _isLoading ? null : _fetchSecurityQuestion(),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Nama pengguna tidak boleh kosong'; // Indonesian
+                return 'Nama pengguna tidak boleh kosong';
               }
               return null;
             },
           ),
           const SizedBox(height: 20),
-          if (_errorMessage.isNotEmpty) // Show error message if any
+          // Show step-specific error message if any
+          if (_errorMessage.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 15.0),
               child: Text(
@@ -272,9 +292,7 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
           ElevatedButton(
             onPressed: _isLoading ? null : _fetchSecurityQuestion,
             style: _buttonStyle(),
-            child: _isLoading
-                ? _loadingIndicator()
-                : const Text('CONFIRM', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)), // Indonesian
+            child: _isLoading ? _loadingIndicator() : const Text('LANJUT', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -287,15 +305,15 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
       key: _answerFormKey,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch, // Make button full width
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'Jawab Pertanyaan Keamanan Berikut', // Indonesian
+            'Jawab Pertanyaan Keamanan Berikut',
              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87),
              textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
-          // Display the security question (read-only)
+          // Display the security question
           Container(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
             width: double.infinity,
@@ -313,20 +331,21 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
           const SizedBox(height: 25),
           TextFormField(
             controller: _securityAnswerController,
-            decoration: _inputDecoration('Jawaban Anda', Icons.question_answer_outlined), // Indonesian
+            decoration: _inputDecoration('Jawaban Anda', Icons.question_answer_outlined),
             keyboardType: TextInputType.text,
             textInputAction: TextInputAction.done,
-            autofocus: true, // Focus field when step appears
+             enabled: !_isLoading, // Disable when loading
+            autofocus: true,
             onFieldSubmitted: (_) => _isLoading ? null : _verifySecurityAnswer(),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Jawaban tidak boleh kosong'; // Indonesian
+                return 'Jawaban tidak boleh kosong';
               }
               return null;
             },
           ),
           const SizedBox(height: 20),
-          if (_errorMessage.isNotEmpty) // Show error message if any
+           if (_errorMessage.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 15.0),
               child: Text(
@@ -338,23 +357,21 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
           ElevatedButton(
             onPressed: _isLoading ? null : _verifySecurityAnswer,
             style: _buttonStyle(),
-            child: _isLoading
-                ? _loadingIndicator()
-                : const Text('Verifikasi Jawaban', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)), // Indonesian
+            child: _isLoading ? _loadingIndicator() : const Text('Verifikasi Jawaban', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
           const SizedBox(height: 10),
-          // Option to go back to username entry
+          // Option to go back
            Center(
              child: TextButton(
               onPressed: _isLoading ? null : () {
                   setState(() {
                     _currentStep = ForgotPasswordStep.enterUsername;
-                    _errorMessage = ''; // Clear error
-                    _securityAnswerController.clear(); // Clear previous answer
-                    // _usernameController can keep its value or be cleared
+                    _errorMessage = ''; // Clear error for the new step
+                    _securityAnswerController.clear(); // Clear field from this step
+                    // Keep username field populated
                   });
                 },
-              child: Text('<< Kembali ke Nama Pengguna', style: TextStyle(color: primaryColor)), // Indonesian
+              child: Text('<< Kembali ke Nama Pengguna', style: TextStyle(color: primaryColor.withOpacity(0.9))),
              ),
            ),
         ],
@@ -368,10 +385,10 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
       key: _resetPasswordFormKey,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch, // Make button full width
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
            const Text(
-             'Masukkan Kata Sandi Baru Anda', // Indonesian
+             'Masukkan Kata Sandi Baru Anda',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87),
               textAlign: TextAlign.center,
             ),
@@ -379,17 +396,18 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
           TextFormField(
             controller: _newPasswordController,
             obscureText: true,
-            decoration: _inputDecoration('Kata Sandi Baru', Icons.lock_person_outlined), // Indonesian
+            decoration: _inputDecoration('Kata Sandi Baru', Icons.lock_person_outlined),
             textInputAction: TextInputAction.next,
+             enabled: !_isLoading, // Disable when loading
             autofocus: true,
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Kata sandi baru tidak boleh kosong'; // Indonesian
+                return 'Kata sandi baru tidak boleh kosong';
               }
               if (value.length < 6) {
-                 return 'Kata sandi minimal 6 karakter'; // Indonesian
+                 return 'Kata sandi minimal 6 karakter';
               }
-              // Optional: Check if it's the same as a known old password (if applicable)
+              // Potential improvement: Prevent using the same username as password, etc.
               return null;
             },
           ),
@@ -397,21 +415,22 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
           TextFormField(
             controller: _confirmPasswordController,
             obscureText: true,
-             decoration: _inputDecoration('Konfirmasi Kata Sandi Baru', Icons.lock_outline), // Indonesian
+             decoration: _inputDecoration('Konfirmasi Kata Sandi Baru', Icons.lock_outline),
              textInputAction: TextInputAction.done,
+              enabled: !_isLoading, // Disable when loading
              onFieldSubmitted: (_) => _isLoading ? null : _resetPassword(),
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Konfirmasi kata sandi tidak boleh kosong'; // Indonesian
+                return 'Konfirmasi kata sandi tidak boleh kosong';
               }
               if (value != _newPasswordController.text) {
-                return 'Kata sandi tidak cocok'; // Indonesian
+                return 'Kata sandi tidak cocok';
               }
               return null;
             },
           ),
           const SizedBox(height: 20),
-           if (_errorMessage.isNotEmpty) // Show error message if any
+           if (_errorMessage.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 15.0),
               child: Text(
@@ -423,26 +442,25 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
           ElevatedButton(
             onPressed: _isLoading ? null : _resetPassword,
             style: _buttonStyle(),
-            child: _isLoading
-                ? _loadingIndicator()
-                : const Text('Simpan Kata Sandi Baru', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)), // Indonesian
+            child: _isLoading ? _loadingIndicator() : const Text('Simpan Kata Sandi Baru', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
+          // No back button here, user should complete or cancel via AppBar back button
         ],
       ),
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
        appBar: AppBar(
-        title: const Text('Lupa Kata Sandi'), // Indonesian
+        title: const Text('Lupa Kata Sandi'),
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
         elevation: 2,
-        leading: IconButton( // Add back button to always allow returning to login
+        leading: IconButton( // Provide a consistent way back
           icon: const Icon(Icons.arrow_back),
+          // Disable back button during network request to avoid interrupting flow
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
         ),
       ),
@@ -456,41 +474,29 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
              end: Alignment.bottomCenter,
            ),
          ),
-        child: Center( // Center the card
-          child: SingleChildScrollView(
+        child: Center(
+          child: SingleChildScrollView( // Ensure scrolling if content overflows
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 30.0),
             child: Card(
               elevation: 6,
-              color: const Color(0xFFFFF5F5).withOpacity(0.97), // Slightly more opaque
+              color: const Color(0xFFFFF5F5).withOpacity(0.97),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
-                side: BorderSide(color: primaryColor.withOpacity(0.3)) // Subtle border
+                side: BorderSide(color: primaryColor.withOpacity(0.3))
               ),
-              clipBehavior: Clip.antiAlias,
+              clipBehavior: Clip.antiAlias, // Helps with shape rendering
               child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                // AnimatedSwitcher provides smooth transition between steps
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 28.0), // Adjusted padding
                 child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 350),
-                    switchInCurve: Curves.easeInOut,
-                    switchOutCurve: Curves.easeInOut,
+                    duration: const Duration(milliseconds: 300), // Slightly faster transition
+                    switchInCurve: Curves.easeIn, // Standard curves
+                    switchOutCurve: Curves.easeOut,
                     transitionBuilder: (Widget child, Animation<double> animation) {
-                      // Fade transition
+                      // Fade transition (simple and effective)
                       return FadeTransition(opacity: animation, child: child);
-                      // Optional: Slide transition (uncomment to use)
-                      // final slideAnimation = Tween<Offset>(
-                      //   begin: const Offset(0.5, 0.0), // Slide from right
-                      //   end: Offset.zero,
-                      // ).animate(animation);
-                      // return ClipRect( // Important for slide transitions
-                      //   child: SlideTransition(position: slideAnimation, child: child),
-                      // );
                     },
-                    child: Container(
-                      // Key is important for AnimatedSwitcher to detect widget changes based on step
-                      key: ValueKey<ForgotPasswordStep>(_currentStep),
-                      child: _buildCurrentStepWidget(),
-                    ),
+                    // The child's key ensures AnimatedSwitcher detects the change
+                    child: _buildCurrentStepWidget(),
                 ),
               ),
             ),
@@ -500,53 +506,59 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
     );
   }
 
-    // Helper for input decoration (consistent style)
+  // --- Helper Widgets ---
+
   InputDecoration _inputDecoration(String label, IconData icon) {
      return InputDecoration(
        labelText: label,
+       labelStyle: TextStyle(color: primaryColor.withOpacity(0.9)), // Slightly more prominent label
        prefixIcon: Icon(icon, color: primaryColor.withOpacity(0.8)),
        filled: true,
-       fillColor: Colors.white.withOpacity(0.9),
-       border: OutlineInputBorder(
-         borderRadius: BorderRadius.circular(12),
-         borderSide: BorderSide.none,
-       ),
-       enabledBorder: OutlineInputBorder( // Border when not focused
+       fillColor: Colors.white.withOpacity(0.95), // Slightly more opaque fill
+       border: OutlineInputBorder( // Define base border
          borderRadius: BorderRadius.circular(12),
          borderSide: BorderSide(color: Colors.grey.shade300, width: 1.0),
        ),
-       focusedBorder: OutlineInputBorder( // Border when focused
+       enabledBorder: OutlineInputBorder(
          borderRadius: BorderRadius.circular(12),
-         borderSide: BorderSide(color: primaryColor, width: 1.8),
+         borderSide: BorderSide(color: Colors.grey.shade400, width: 1.0), // Slightly darker enabled border
        ),
-       errorBorder: OutlineInputBorder( // Style for error border
+       focusedBorder: OutlineInputBorder(
          borderRadius: BorderRadius.circular(12),
-         borderSide: const BorderSide(color: Colors.redAccent, width: 1.0),
+         borderSide: BorderSide(color: primaryColor, width: 2.0), // Thicker focus
        ),
-       focusedErrorBorder: OutlineInputBorder( // Style for error border when focused
+       errorBorder: OutlineInputBorder(
          borderRadius: BorderRadius.circular(12),
-         borderSide: const BorderSide(color: Colors.redAccent, width: 1.8),
+         borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
        ),
+       focusedErrorBorder: OutlineInputBorder(
+         borderRadius: BorderRadius.circular(12),
+         borderSide: const BorderSide(color: Colors.redAccent, width: 2.0), // Thicker error focus
+       ),
+       disabledBorder: OutlineInputBorder( // Style when disabled
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300.withOpacity(0.7), width: 1.0),
+        ),
         contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
      );
    }
 
-    // Helper for button style (consistent style)
    ButtonStyle _buttonStyle() {
       return ElevatedButton.styleFrom(
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20), // Adjusted padding
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
         elevation: 3,
-        textStyle: const TextStyle(fontWeight: FontWeight.bold) // Ensure text style is consistent
+        textStyle: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5), // Added letter spacing
+        disabledBackgroundColor: primaryColor.withOpacity(0.5), // Visual feedback when disabled
+        disabledForegroundColor: Colors.white.withOpacity(0.8),
       );
    }
 
-   // Helper for loading indicator (consistent style)
    Widget _loadingIndicator() {
      return const SizedBox(
-       height: 24, // Match text line height roughly
+       height: 24,
        width: 24,
        child: CircularProgressIndicator(
          color: Colors.white,

@@ -1,14 +1,14 @@
 // File: lib/login_page.dart
 import 'dart:async'; // Import for Timer/TimeoutException
-import 'dart:convert';
+import 'dart:convert'; // Import for jsonDecode, jsonEncode
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pamasuka/menu_page.dart'; // Ensure this import path is correct for your project
-import 'package:pamasuka/lupapage.dart'; // <-- ADDED IMPORT for Forgot Password
+import 'package:pamasuka/lupapage.dart'; // Ensure this import path is correct for your project
 
 // --- Base URL for API calls ---
-// ** IMPORTANT: Replace with your actual server address/domain and path **
-const String _apiBaseUrl = 'https://tunnel.jato.my.id/test%20api'; // 10.0.2.2 for Android emulator -> host localhost
+// ** IMPORTANT: Keeping URL as requested. Consider using a name without spaces like 'test_api' on the server if possible in the future. **
+const String _apiBaseUrl = 'https://tunnel.jato.my.id/test%20api'; // Kept as requested
 // ---
 
 class LoginPage extends StatefulWidget {
@@ -23,9 +23,10 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
 
+  // Define colors consistently
   final Color startColor = const Color(0xFFFFB6B6);
   final Color endColor = const Color(0xFFFF8E8E);
-  final Color primaryColor = const Color(0xFFC0392B); // Define primary color
+  final Color primaryColor = const Color(0xFFC0392B);
 
   // --- Helper Function to Show Snack Bar ---
   void _showSnackBar(String message, {bool isError = false}) {
@@ -35,84 +36,119 @@ class _LoginPageState extends State<LoginPage> {
       SnackBar(
         content: Text(message),
         backgroundColor: isError ? Colors.redAccent : Colors.green,
-        behavior: SnackBarBehavior.floating, // Optional: Make it float above bottom nav bar if any
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), // Added shape
+        margin: const EdgeInsets.all(10), // Added margin
       ),
     );
   }
 
   // --- Login Function ---
   Future<void> _login() async {
-    // Trim username input, password usually shouldn't be trimmed
     final String username = _usernameController.text.trim();
     final String password = _passwordController.text;
 
-    // Client-side validation
     if (username.isEmpty || password.isEmpty) {
-      _showSnackBar('Nama pengguna dan kata sandi harus diisi.', isError: true); // Indonesian message
+      _showSnackBar('Nama pengguna dan kata sandi harus diisi.', isError: true);
       return;
     }
 
-    // Set loading state only if mounted
     if (!mounted) return;
     setState(() { _isLoading = true; });
 
-    final url = Uri.parse('$_apiBaseUrl/login.php'); // Use the base URL constant
+    final url = Uri.parse('$_apiBaseUrl/login.php');
 
     try {
-      // Send request with timeout
       final response = await http.post(
         url,
-        // Sending as form data implicitly by http package when body is Map<String, String>
-        // If your updated PHP expects JSON, change headers and body:
-        // headers: {'Content-Type': 'application/json'},
-        // body: json.encode({
-        //   'username': username,
-        //   'password': password,
-        // }),
-        body: { // Keep as form data to match updated PHP which checks both JSON and POST
+        // Sending as form data (matches PHP checking $_POST)
+        body: {
           'username': username,
           'password': password,
         },
-      ).timeout(const Duration(seconds: 15)); // Add a reasonable timeout
+      ).timeout(const Duration(seconds: 20)); // Increased timeout slightly
 
-      // Check if the widget is still mounted after the async call
-      if (!mounted) return;
+      if (!mounted) return; // Check again after await
 
-      // Process response
+      // FIX: Added Content-Type check before attempting JSON decode
+      final contentType = response.headers['content-type'];
+      if (contentType == null || !contentType.toLowerCase().contains('application/json')) {
+         // Handle cases where server responds with 200 OK but non-JSON body (e.g., HTML error)
+         if (response.statusCode == 200) {
+             _showSnackBar('Respons server tidak dalam format JSON yang diharapkan.', isError: true);
+             print("Server Response (Status 200, Not JSON): ${response.body}");
+         } else {
+             // Handle non-200 error responses (likely HTML or plain text)
+             _showSnackBar('Kesalahan server: ${response.statusCode}. Format respons tidak dikenal.', isError: true);
+             print("Server Error Response (${response.statusCode}, Not JSON): ${response.body}");
+         }
+         return; // Exit processing
+      }
+
+      // Process response only if it's likely JSON
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          // Ensure userId is correctly parsed as int
-           final int userId = data['userId'] is int ? data['userId'] : int.tryParse(data['userId'].toString()) ?? 0; // Safer parsing
-           final String responseUsername = data['username'] ?? 'Pengguna'; // Default username if missing
+        // FIX: Added specific try-catch for JSON decoding and processing
+        try {
+          final data = json.decode(response.body);
 
-          // Navigate to MenuPage on successful login
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MenuPage(
-                username: responseUsername,
-                userId: userId,
+          // Ensure 'success' key exists and is a boolean
+          if (data['success'] is bool && data['success'] == true) {
+            // FIX: Added .toString() for extra safety before null check/fallback
+            final String responseUsername = data['username']?.toString() ?? 'Pengguna';
+            // Safer userId parsing (already good)
+            final int userId = data['userId'] is int
+                ? data['userId']
+                : int.tryParse(data['userId']?.toString() ?? '') ?? 0;
+
+            if (!mounted) return; // Check before navigation
+
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MenuPage(
+                  username: responseUsername,
+                  userId: userId,
+                ),
               ),
-            ),
-          );
-        } else {
-          // Show error message from API response or a default one
-          _showSnackBar(data['message'] ?? 'Login gagal. Periksa kembali kredensial Anda.', isError: true); // Indonesian message
+            );
+          } else {
+            // Handle cases where 'success' is false or missing/not boolean
+            final String message = data['message']?.toString() ?? 'Login gagal. Periksa kembali kredensial Anda.';
+            _showSnackBar(message, isError: true);
+          }
+        } on FormatException catch (e) {
+          _showSnackBar('Format respons dari server tidak valid.', isError: true);
+          print("JSON Decode Error: $e. Response body: ${response.body}");
+        } catch (e) {
+          // Catch other potential errors during data processing (e.g., accessing missing keys unexpectedly)
+          _showSnackBar('Kesalahan saat memproses data login: ${e.toString()}', isError: true);
+          print("Data processing error: $e");
         }
       } else {
-        // Handle non-200 status codes (e.g., 404, 500)
-         _showSnackBar('Kesalahan server: ${response.statusCode}. Silakan coba lagi nanti.', isError: true); // Indonesian message
-         print("Server error response: ${response.body}"); // Log server response body
+        // Handle non-200 status codes more gracefully, attempting to decode JSON error message if possible
+        String errorMessage = 'Kesalahan server: ${response.statusCode}.';
+        try {
+            final errorData = json.decode(response.body);
+            errorMessage += ' Pesan: ${errorData['message'] ?? 'Tidak ada pesan tambahan.'}';
+        } catch (_) {
+            // If response body is not JSON, just show the status code
+             errorMessage += ' Silakan coba lagi nanti.';
+        }
+         _showSnackBar(errorMessage, isError: true);
+         print("Server error response (${response.statusCode}): ${response.body}");
       }
     } on TimeoutException {
-        _showSnackBar('Koneksi ke server time out. Periksa koneksi internet Anda.', isError: true); // Indonesian message
-    } on FormatException {
-         _showSnackBar('Format respons dari server tidak valid.', isError: true); // Indonesian message
+        if (!mounted) return;
+        _showSnackBar('Koneksi ke server time out. Periksa koneksi internet Anda.', isError: true);
+    } on http.ClientException catch (e) { // Catch specific network errors
+        if (!mounted) return;
+        _showSnackBar('Kesalahan koneksi: ${e.message}', isError: true);
+        print("Network ClientException: $e");
     } catch (e) {
-      // Handle other errors (network issues, etc.)
-      _showSnackBar('Terjadi kesalahan jaringan: ${e.toString()}', isError: true); // Indonesian message
-      print("Login error: $e"); // Log detailed error for debugging
+      // Catch other unexpected errors (e.g., socket exceptions, general errors)
+      if (!mounted) return;
+      _showSnackBar('Terjadi kesalahan tak terduga: ${e.toString()}', isError: true);
+      print("Login general error: $e");
     } finally {
       // Ensure loading state is turned off only if the widget is still mounted
       if (mounted) {
@@ -123,7 +159,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    // Dispose controllers to free up resources
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -133,8 +168,8 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-         width: double.infinity, // Ensure gradient covers full screen width
-         height: double.infinity, // Ensure gradient covers full screen height
+         width: double.infinity,
+         height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [startColor, endColor],
@@ -143,104 +178,103 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
         child: Center(
-          child: SingleChildScrollView( // Allows scrolling on smaller screens
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: 20), // Added vertical padding
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo (Ensure asset path is correct and declared in pubspec.yaml)
+                  // IMPROVEMENT: Added comment recommending asset constants
+                  // Consider managing asset paths in a separate constants file (e.g., lib/constants/app_assets.dart)
+                  // for better maintainability. Example: Image.asset(AppAssets.logo, ...)
                   Image.asset(
-                    'images/Samalonian APP.png',
-                    height: MediaQuery.of(context).size.height * 0.20, // Adjusted height slightly
+                    'images/Samalonian APP.png', // Ensure path is correct and in pubspec.yaml
+                    height: MediaQuery.of(context).size.height * 0.18, // Adjusted height slightly
                     errorBuilder: (context, error, stackTrace) {
-                       // Show a placeholder if the image fails to load
-                       print("Error loading logo: $error"); // Log error
-                       return const Icon(Icons.image_not_supported, size: 100, color: Colors.grey);
+                       print("Error loading logo: $error");
+                       return Icon(Icons.image_not_supported_rounded, size: 100, color: Colors.grey.shade700);
                     }
                   ),
-                  const SizedBox(height: 32),
-                  // Login Card
+                  const SizedBox(height: 28), // Adjusted spacing
                   Card(
-                    elevation: 6, // Slightly more elevation
-                    color: const Color(0xFFFFF5F5).withOpacity(0.95), // Slightly more opaque card
+                    elevation: 6,
+                    color: const Color(0xFFFFF5F5).withOpacity(0.95),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20), // More rounded corners
+                      borderRadius: BorderRadius.circular(20),
                       side: BorderSide(color: startColor.withOpacity(0.6), width: 1),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(24),
                       child: Column(
-                        mainAxisSize: MainAxisSize.min, // Card size wraps content
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Title
                            Center(
                             child: Text('Login', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: primaryColor))),
-                          const SizedBox(height: 20),
-                          // Username Field
+                          const SizedBox(height: 24), // Adjusted spacing
                           TextField(
                             controller: _usernameController,
                             keyboardType: TextInputType.text,
-                            textInputAction: TextInputAction.next, // Focus next field on enter/next
-                            decoration: _inputDecoration('Nama Pengguna', Icons.person_outline), // Indonesian & Outline icon
+                            textInputAction: TextInputAction.next,
+                            // FIX: Disable field when loading
+                            enabled: !_isLoading,
+                            decoration: _inputDecoration('Nama Pengguna', Icons.person_outline),
                           ),
                           const SizedBox(height: 16),
-                          // Password Field
                           TextField(
                             controller: _passwordController,
                             obscureText: true,
                             keyboardType: TextInputType.visiblePassword,
-                            textInputAction: TextInputAction.done, // Submit action on enter/done
-                            onSubmitted: (_) { // Allow login by pressing done/enter on keyboard
-                              if (!_isLoading) _login();
+                            textInputAction: TextInputAction.done,
+                            // FIX: Disable field when loading
+                            enabled: !_isLoading,
+                            onSubmitted: (_) {
+                              if (!_isLoading) _login(); // Allow login via keyboard action
                             },
-                            decoration: _inputDecoration('Kata Sandi', Icons.lock_outline), // Indonesian & Outline icon
+                            decoration: _inputDecoration('Kata Sandi', Icons.lock_outline),
                           ),
-                          const SizedBox(height: 24),
-                          // Login Button
-                          SizedBox( // Wrap button for consistent width
+                          const SizedBox(height: 28), // Adjusted spacing
+                          SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              // Disable button while loading
-                              onPressed: _isLoading ? null : _login,
+                              onPressed: _isLoading ? null : _login, // Correctly disables button
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: primaryColor,
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(vertical: 16),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                                 elevation: 3,
+                                // Provide visual feedback when disabled
+                                disabledBackgroundColor: primaryColor.withOpacity(0.5),
                               ),
                               child: _isLoading
-                                  ? const SizedBox( // Constrain indicator size
+                                  ? const SizedBox(
                                       height: 24, width: 24,
                                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
                                   : const Text('Login', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                             ),
                           ),
-                          const SizedBox(height: 16), // Add space before forgot password
-                          // --- FORGOT PASSWORD LINK (MODIFIED) ---
+                          const SizedBox(height: 16),
                           TextButton(
-                            onPressed: () {
-                              // Navigate to Forgot Password Page
+                            // Disable button while loading to prevent accidental taps
+                            onPressed: _isLoading ? null : () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const LupaPasswordPage()), // Navigate to LupaPasswordPage
+                                MaterialPageRoute(builder: (context) => const LupaPasswordPage()),
                               );
                             },
                             child: Text(
-                              'Lupa Kata Sandi?', // Indonesian
+                              'Lupa Kata Sandi?',
                               style: TextStyle(
-                                color: primaryColor, // Match theme color
-                                // decoration: TextDecoration.underline, // Optional underline
+                                color: _isLoading ? Colors.grey : primaryColor, // Dim color when disabled
                               ),
                             ),
                           ),
-                          // --- END OF MODIFICATION ---
                         ],
                       ),
                     ),
                   ),
-                   const SizedBox(height: 20), // Add some padding at the bottom
+                   const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -250,22 +284,32 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // Helper for input decoration to keep code DRY
+  // Helper for input decoration
   InputDecoration _inputDecoration(String label, IconData icon) {
      return InputDecoration(
        labelText: label,
+       labelStyle: TextStyle(color: primaryColor.withOpacity(0.8)), // Softer label color
        prefixIcon: Icon(icon, color: primaryColor),
        filled: true,
-       fillColor: Colors.white.withOpacity(0.9), // Slightly transparent
+       fillColor: Colors.white.withOpacity(0.9),
        border: OutlineInputBorder(
          borderRadius: BorderRadius.circular(12),
-         borderSide: BorderSide.none, // Hide border side when filled
+         borderSide: BorderSide.none,
        ),
-       focusedBorder: OutlineInputBorder( // Add a border highlight when focused
+       focusedBorder: OutlineInputBorder(
          borderRadius: BorderRadius.circular(12),
-         borderSide: BorderSide(color: primaryColor, width: 1.5),
+         borderSide: BorderSide(color: primaryColor, width: 2.0), // Thicker focus border
        ),
-       // Add hint style, error style etc. if needed
+       // Added border for when the field is enabled but not focused
+       enabledBorder: OutlineInputBorder(
+         borderRadius: BorderRadius.circular(12),
+         borderSide: BorderSide(color: primaryColor.withOpacity(0.3), width: 1.0),
+       ),
+       // Added border for when the field is disabled
+       disabledBorder: OutlineInputBorder(
+         borderRadius: BorderRadius.circular(12),
+         borderSide: BorderSide(color: Colors.grey.withOpacity(0.2), width: 1.0),
+       ),
      );
    }
 }

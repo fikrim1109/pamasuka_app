@@ -4,12 +4,12 @@ import 'dart:async'; // For Timer/TimeoutException
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-// Use the same base URL as defined in login_page.dart or define it globally
-const String _apiBaseUrl = 'https://tunnel.jato.my.id/test%20api'; // Adjust if needed
+// Use the same base URL or ensure it's consistent
+const String _apiBaseUrl = 'https://tunnel.jato.my.id/test%20api'; // Kept as requested
 
 class AkunPage extends StatefulWidget {
   final int userId;
-  final String username;
+  final String username; // Username might be useful for display
 
   const AkunPage({
     Key? key,
@@ -29,25 +29,26 @@ class _AkunPageState extends State<AkunPage> {
   final TextEditingController _securityAnswerController = TextEditingController();
 
   // --- State Variables ---
-  String? _selectedSecurityQuestion; // Holds the *currently selected/saved* question string
+  String? _dropdownSelectedQuestion;
+  String? _savedSecurityQuestion;
+
   final List<String> _securityQuestions = const [
-    "nama panggilan",
-    "nama hewan",
-    "kota asal",
-    "makanan favorit",
-    "artis/idola"
+    "Nama panggilan masa kecil?",
+    "Nama hewan peliharaan pertama?",
+    "Kota kelahiran ibu?",
+    "Makanan favorit Anda?",
+    "Nama idola/artis favorit?"
   ];
 
   bool _isLoadingPassword = false;
   bool _isLoadingSecurity = false;
-  bool _isFetchingData = true; // Combined initial fetch state
-  bool _hasSecurityQuestionSet = false; // Determined after fetching
+  bool _isFetchingInitialData = true;
 
-  // Separate Form Keys for each section
+  bool get _hasSecurityQuestionSet => _savedSecurityQuestion != null && _savedSecurityQuestion!.isNotEmpty;
+
   final GlobalKey<FormState> _passwordFormKey = GlobalKey<FormState>();
   final GlobalKey<FormState> _securityFormKey = GlobalKey<FormState>();
 
-  // Theme Colors
   final Color startColor = const Color(0xFFFFB6B6);
   final Color endColor = const Color(0xFFFF8E8E);
   final Color primaryColor = const Color(0xFFC0392B);
@@ -55,7 +56,7 @@ class _AkunPageState extends State<AkunPage> {
   @override
   void initState() {
     super.initState();
-    _fetchSecurityData(); // Fetch initial data on load
+    _fetchSecurityData();
   }
 
   @override
@@ -76,191 +77,200 @@ class _AkunPageState extends State<AkunPage> {
         backgroundColor: isError ? Colors.redAccent : Colors.green,
         behavior: SnackBarBehavior.floating,
         duration: duration,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(10),
       ),
     );
+  }
+
+  // --- API Helper: Generic Request Handling ---
+  Future<Map<String, dynamic>?> _makeApiRequest({
+    required String endpoint,
+    required Map<String, dynamic> body,
+    required String errorMessagePrefix,
+    String method = 'POST',
+    bool setLoadingState = true,
+    Function(bool)? setLoading
+  }) async {
+
+    if (!mounted) return null;
+
+    if (setLoadingState) {
+        if(setLoading != null) {
+            setLoading(true);
+        } else {
+             setState(() { /* Update general loading state if needed */ });
+        }
+    }
+
+    final url = Uri.parse('$_apiBaseUrl/$endpoint');
+    // FIX: Declare response as nullable to satisfy the analyzer
+    http.Response? response;
+    Map<String, String> headers = {'Content-Type': 'application/json'};
+    String? responseBodyForErrorLogging; // To safely log body in case of FormatException
+
+    try {
+      if (method.toUpperCase() == 'GET') {
+        final queryParams = body.map((key, value) => MapEntry(key, value.toString()));
+        final fullUrl = url.replace(queryParameters: queryParams);
+        response = await http.get(fullUrl, headers: headers).timeout(const Duration(seconds: 15));
+      } else { // POST
+        response = await http.post(
+          url,
+          headers: headers,
+          body: json.encode(body),
+        ).timeout(const Duration(seconds: 15));
+      }
+
+      if (!mounted) return null;
+      
+      // Store body for potential error logging before attempting decode
+      responseBodyForErrorLogging = response.body; 
+
+      // Use null assertion `!` because if we reach here without exceptions, response *must* be assigned.
+      final data = json.decode(response!.body);
+
+      if (response.statusCode == 200 && data is Map<String, dynamic> && data['success'] == true) {
+         return data; // Success
+      } else {
+        final String message = data is Map<String, dynamic> ? (data['message'] ?? 'Unknown API error.') : 'Invalid response structure.';
+        _showSnackBar('$errorMessagePrefix: $message', isError: true, duration: const Duration(seconds: 5));
+        return null; // Indicate failure
+      }
+    } on TimeoutException {
+        _showSnackBar('$errorMessagePrefix: Connection timed out.', isError: true);
+        return null;
+    } on FormatException catch (e) {
+        _showSnackBar('$errorMessagePrefix: Invalid server response format.', isError: true);
+        // Safely log the response body captured before the decode attempt
+        print("API FormatException ($endpoint): $e. Response Body: $responseBodyForErrorLogging");
+        return null;
+    } on http.ClientException catch (e) {
+       _showSnackBar('$errorMessagePrefix: Network error: ${e.message}', isError: true);
+        print("API ClientException ($endpoint): $e");
+        return null;
+    } catch (e) {
+        _showSnackBar('$errorMessagePrefix: An unexpected error occurred: ${e.runtimeType}', isError: true);
+        print("API General Exception ($endpoint): $e");
+        return null;
+    } finally {
+       if (mounted) {
+           if (setLoadingState) {
+               if(setLoading != null) {
+                   setLoading(false);
+               } else {
+                   setState(() { /* Update general loading state */ });
+               }
+           }
+       }
+    }
   }
 
   // --- Fetch Current Security Question Status ---
   Future<void> _fetchSecurityData() async {
     if (!mounted) return;
-    setState(() { _isFetchingData = true; }); // Show loading indicator
+    setState(() { _isFetchingInitialData = true; });
 
-    final url = Uri.parse('$_apiBaseUrl/securityquestion.php?userId=${widget.userId}');
+    final data = await _makeApiRequest(
+      endpoint: 'securityquestion.php',
+      method: 'GET',
+      body: {'userId': widget.userId},
+      errorMessagePrefix: 'Failed to load security data',
+      setLoadingState: false,
+    );
 
-    try {
-      final response = await http.get(url).timeout(const Duration(seconds: 15));
-      if (!mounted) return;
-
-      String? fetchedQuestion;
-      bool hasQuestion = false;
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true && data['question'] != null) {
-            // Check if the fetched question is valid
-            if (_securityQuestions.contains(data['question'])) {
-               fetchedQuestion = data['question'];
-               hasQuestion = true;
-            } else {
-               print("Warning: Fetched security question '${data['question']}' is not in the allowed list.");
-            }
-        }
-      } else {
-         print("Server error fetching security data: ${response.statusCode}");
-         // Optionally show error, but allow page to load
-         // _showSnackBar('Gagal memuat status keamanan.', isError: true);
-      }
-
-      // Update state after fetch attempt
-      setState(() {
-        _selectedSecurityQuestion = fetchedQuestion; // Will be null if no valid question found
-        _hasSecurityQuestionSet = hasQuestion;
-        _isFetchingData = false; // Hide loading indicator
-      });
-
-    } catch (e) {
-       print("Fetch security data exception: $e");
-       // Update state even on error to hide loading
-       if (mounted) {
-         setState(() {
-           _selectedSecurityQuestion = null;
-           _hasSecurityQuestionSet = false;
-           _isFetchingData = false;
-           // _showSnackBar('Terjadi kesalahan saat memuat data.', isError: true);
-         });
+     String? fetchedQuestion;
+     if (data != null && data['question'] != null) {
+       String potentialQuestion = data['question'];
+       if (_securityQuestions.contains(potentialQuestion)) {
+         fetchedQuestion = potentialQuestion;
+       } else {
+          print("Warning: Fetched security question '$potentialQuestion' is not in the predefined list. Ignoring.");
        }
+     }
+
+    if (mounted) {
+      setState(() {
+        _savedSecurityQuestion = fetchedQuestion;
+        _dropdownSelectedQuestion = fetchedQuestion;
+        _isFetchingInitialData = false;
+      });
+    } else {
+       // If widget unmounted during fetch, ensure loading state is off if possible
+       // This case is unlikely here but good practice in complex scenarios.
+       _isFetchingInitialData = false;
     }
   }
 
   // --- Change Password Function ---
   Future<void> _changePassword() async {
-    // Double check if allowed (should be disabled in UI anyway)
     if (!_hasSecurityQuestionSet) {
-      _showSnackBar('Harap atur pertanyaan keamanan terlebih dahulu.', isError: true);
+      _showSnackBar('Harap atur pertanyaan keamanan terlebih dahulu untuk mengubah kata sandi.', isError: true);
+      return;
+    }
+    if (!_passwordFormKey.currentState!.validate()) {
       return;
     }
 
-    if (!_passwordFormKey.currentState!.validate()) {
-      return; // Basic form validation failed
-    }
+    final data = await _makeApiRequest(
+      endpoint: 'changepassword.php',
+      body: {
+        'userId': widget.userId,
+        'currentPassword': _currentPasswordController.text,
+        'newPassword': _newPasswordController.text,
+      },
+      errorMessagePrefix: 'Failed to change password',
+      setLoading: (loading) => setState(() => _isLoadingPassword = loading)
+    );
 
-    if (!mounted) return;
-    setState(() { _isLoadingPassword = true; });
-
-    final url = Uri.parse('$_apiBaseUrl/changepassword.php');
-    final body = json.encode({
-      'userId': widget.userId,
-      'currentPassword': _currentPasswordController.text,
-      'newPassword': _newPasswordController.text,
-    });
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: body,
-      ).timeout(const Duration(seconds: 15));
-
-      if (!mounted) return;
-
-      final data = json.decode(response.body);
-
-      if (response.statusCode == 200 && data['success'] == true) {
-        _showSnackBar(data['message'] ?? 'Kata sandi berhasil diubah.', isError: false);
-        _passwordFormKey.currentState!.reset(); // Clear fields on success
-        _currentPasswordController.clear();
-        _newPasswordController.clear();
-        _confirmPasswordController.clear();
-      } else {
-        _showSnackBar(data['message'] ?? 'Gagal mengubah kata sandi.', isError: true);
-      }
-    } on TimeoutException {
-      _showSnackBar('Koneksi time out. Gagal mengubah kata sandi.', isError: true);
-    } catch (e) {
-      _showSnackBar('Terjadi kesalahan jaringan: ${e.toString()}', isError: true);
-      print("Change password error: $e");
-    } finally {
-      if (mounted) {
-        setState(() { _isLoadingPassword = false; });
-      }
+    if (data != null && mounted) {
+      _showSnackBar(data['message'] ?? 'Kata sandi berhasil diubah.');
+       _passwordFormKey.currentState?.reset();
+       _currentPasswordController.clear();
+       _newPasswordController.clear();
+       _confirmPasswordController.clear();
+       FocusScope.of(context).unfocus();
     }
   }
 
   // --- Save/Update Security Question Function ---
   Future<void> _saveSecurityQuestion() async {
     if (!_securityFormKey.currentState!.validate()) {
-      return; // Basic form validation failed
+      return;
     }
 
-    // Get the currently selected value from the dropdown in the form
-    // Note: _selectedSecurityQuestion state variable might hold the *initial* value.
-    // It's better to rely on the form's current state if possible, or ensure
-    // the state variable is updated `onChanged`. We'll use the state variable
-    // as it's updated by `onChanged`.
-    final String? questionToSave = _selectedSecurityQuestion;
+    final String? questionToSave = _dropdownSelectedQuestion;
     final String answerToSave = _securityAnswerController.text.trim();
 
     if (questionToSave == null || questionToSave.isEmpty) {
-      _showSnackBar('Kesalahan: Pertanyaan tidak terpilih.', isError: true);
+      _showSnackBar('Silakan pilih pertanyaan keamanan.', isError: true);
       return;
     }
      if (answerToSave.isEmpty) {
-       _showSnackBar('Kesalahan: Jawaban tidak boleh kosong.', isError: true);
+       _showSnackBar('Jawaban keamanan tidak boleh kosong.', isError: true);
        return;
     }
 
+    final data = await _makeApiRequest(
+      endpoint: 'securityquestion.php',
+      body: {
+        'userId': widget.userId,
+        'question': questionToSave,
+        'answer': answerToSave,
+      },
+      errorMessagePrefix: 'Failed to save security info',
+       setLoading: (loading) => setState(() => _isLoadingSecurity = loading)
+    );
 
-    if (!mounted) return;
-    setState(() { _isLoadingSecurity = true; });
-
-    final url = Uri.parse('$_apiBaseUrl/securityquestion.php'); // POST to save/update
-    final body = json.encode({
-      'userId': widget.userId,
-      'question': questionToSave,
-      'answer': answerToSave,
-    });
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: body,
-      ).timeout(const Duration(seconds: 15));
-
-      if (!mounted) return;
-
-      final data = json.decode(response.body);
-
-      if (response.statusCode == 200 && data['success'] == true) {
-         // Success! Update the state to reflect the change
-         if (mounted) {
-           setState(() {
-             _hasSecurityQuestionSet = true; // Mark as set
-             // _selectedSecurityQuestion is already updated via onChanged
-             // Clear the answer field for next time
-              _securityAnswerController.clear();
-           });
-         }
-        _showSnackBar(data['message'] ?? 'Pertanyaan & jawaban keamanan berhasil disimpan/diperbarui.', isError: false);
-
-        // Optional: Automatically focus the current password field if enabled?
-        // FocusScope.of(context).requestFocus(_currentPasswordFocusNode);
-
-      } else {
-        _showSnackBar(data['message'] ?? 'Gagal menyimpan pertanyaan/jawaban keamanan.', isError: true);
-      }
-    } on TimeoutException {
-      _showSnackBar('Koneksi time out. Gagal menyimpan.', isError: true);
-    } catch (e) {
-      _showSnackBar('Terjadi kesalahan jaringan: ${e.toString()}', isError: true);
-      print("Save security question error: $e");
-    } finally {
-      if (mounted) {
-        setState(() { _isLoadingSecurity = false; });
-      }
+    if (data != null && mounted) {
+       setState(() {
+         _savedSecurityQuestion = questionToSave;
+         _securityAnswerController.clear();
+       });
+       FocusScope.of(context).unfocus();
+      _showSnackBar(data['message'] ?? 'Pertanyaan & jawaban keamanan berhasil disimpan/diperbarui.');
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -281,258 +291,276 @@ class _AkunPageState extends State<AkunPage> {
             end: Alignment.bottomCenter,
           ),
         ),
-        child: _isFetchingData
-            ? const Center(child: CircularProgressIndicator(color: Colors.white))
-            : _buildFormContent(), // Build content after fetching
+        child: _isFetchingInitialData
+            ? Center(child: CircularProgressIndicator(color: primaryColor))
+            : _buildFormContent(),
       ),
     );
   }
 
-  // Widget builder for the main content area
+  // Widget builder for the main content area after initial data fetch
   Widget _buildFormContent() {
-      // Determine if password change should be enabled
       bool canChangePassword = _hasSecurityQuestionSet;
 
-      return SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-
-              // --- Change Password Section ---
-              Card(
-                 elevation: 4,
-                 color: const Color(0xFFFFF5F5).withOpacity(0.95),
-                 shape: RoundedRectangleBorder(
-                   borderRadius: BorderRadius.circular(15),
-                   side: BorderSide(color: primaryColor.withOpacity(0.3))
-                 ),
-                 clipBehavior: Clip.antiAlias,
-                 child: Padding(
-                   padding: const EdgeInsets.all(20.0),
-                   child: IgnorePointer( // Disable interaction if needed
-                     ignoring: !canChangePassword,
-                     child: Opacity( // Make it visually distinct if disabled
-                       opacity: canChangePassword ? 1.0 : 0.5,
-                       child: Form(
-                         key: _passwordFormKey,
-                         child: Column(
-                           crossAxisAlignment: CrossAxisAlignment.stretch,
-                           children: [
-                             Text(
-                               'Ubah Kata Sandi',
-                               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryColor),
-                               textAlign: TextAlign.center,
-                             ),
-                             const SizedBox(height: 15),
-
-                             // Explanatory message if disabled
-                             if (!canChangePassword)
-                               Padding(
-                                 padding: const EdgeInsets.only(bottom: 15.0),
-                                 child: Text(
-                                   'Harap atur Pertanyaan Keamanan di bawah ini terlebih dahulu untuk mengaktifkan fitur ini.',
-                                   textAlign: TextAlign.center,
-                                   style: TextStyle(color: Colors.red.shade700, fontStyle: FontStyle.italic),
-                                 ),
-                               ),
-
-                             TextFormField(
-                               controller: _currentPasswordController,
-                               obscureText: true,
-                               enabled: canChangePassword, // Explicitly enable/disable
-                               decoration: _inputDecoration('Kata Sandi Saat Ini', Icons.lock_clock_outlined),
-                               validator: (value) {
-                                  // Required only if actually changing password
-                                  if (canChangePassword && _newPasswordController.text.isNotEmpty && (value == null || value.isEmpty)) {
-                                    return 'Kata sandi saat ini diperlukan';
-                                  }
-                                  return null;
-                               },
-                             ),
-                             const SizedBox(height: 16),
-                             TextFormField(
-                               controller: _newPasswordController,
-                               obscureText: true,
-                               enabled: canChangePassword,
-                               decoration: _inputDecoration('Kata Sandi Baru (min. 6 karakter)', Icons.lock_outline),
-                               validator: (value) {
-                                 if (!canChangePassword) return null; // Don't validate if disabled
-                                  if (_currentPasswordController.text.isNotEmpty && (value == null || value.isEmpty)) {
-                                    return 'Kata sandi baru diperlukan';
-                                  }
-                                 if (value != null && value.isNotEmpty && value.length < 6) {
-                                   return 'Kata sandi minimal 6 karakter';
-                                 }
-                                  if (value != null && value.isNotEmpty && value == _currentPasswordController.text) {
-                                    return 'Kata sandi baru harus berbeda';
-                                 }
-                                 return null;
-                               },
-                             ),
-                             const SizedBox(height: 16),
-                             TextFormField(
-                               controller: _confirmPasswordController,
-                               obscureText: true,
-                               enabled: canChangePassword,
-                               decoration: _inputDecoration('Konfirmasi Kata Sandi Baru', Icons.lock_person_outlined),
-                               validator: (value) {
-                                  if (!canChangePassword) return null;
-                                   if (_newPasswordController.text.isNotEmpty && (value == null || value.isEmpty)) {
-                                     return 'Konfirmasi kata sandi diperlukan';
-                                   }
-                                 if (value != _newPasswordController.text) {
-                                   return 'Kata sandi tidak cocok';
-                                 }
-                                 return null;
-                               },
-                             ),
-                             const SizedBox(height: 24),
-                             ElevatedButton(
-                               // Enable button only if conditions met AND not loading
-                               onPressed: canChangePassword && !_isLoadingPassword ? _changePassword : null,
-                               style: _buttonStyle(),
-                               child: _isLoadingPassword
-                                   ? _loadingIndicator()
-                                   : const Text('Ubah Kata Sandi', style: TextStyle(fontSize: 16)),
-                             ),
-                           ],
-                         ),
-                       ),
-                     ),
+      return GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                 Padding(
+                   padding: const EdgeInsets.only(bottom: 15.0),
+                   child: Text(
+                     'Akun: ${widget.username}',
+                     textAlign: TextAlign.center,
+                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black.withOpacity(0.7)),
                    ),
                  ),
-              ),
 
-              const SizedBox(height: 30), // Spacer between cards
+                // --- Change Password Section ---
+                _buildCard(
+                  title: 'Ubah Kata Sandi',
+                  formKey: _passwordFormKey,
+                  enabled: canChangePassword,
+                  disabledMessage: 'Harap atur Pertanyaan Keamanan di bawah ini terlebih dahulu untuk mengaktifkan fitur ini.',
+                  isLoading: _isLoadingPassword,
+                  onSave: _changePassword,
+                  saveButtonText: 'Ubah Kata Sandi',
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _currentPasswordController,
+                        obscureText: true,
+                        enabled: canChangePassword,
+                        decoration: _inputDecoration('Kata Sandi Saat Ini', Icons.lock_clock_outlined),
+                        validator: (value) {
+                           if (canChangePassword && _newPasswordController.text.isNotEmpty && (value == null || value.isEmpty)) {
+                             return 'Kata sandi saat ini diperlukan';
+                           }
+                           return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _newPasswordController,
+                        obscureText: true,
+                        enabled: canChangePassword,
+                        decoration: _inputDecoration('Kata Sandi Baru (min. 6 karakter)', Icons.lock_outline),
+                        textInputAction: TextInputAction.next,
+                        validator: (value) {
+                          if (!canChangePassword) return null;
+                           if (_currentPasswordController.text.isNotEmpty && (value == null || value.isEmpty)) {
+                             return 'Kata sandi baru diperlukan';
+                           }
+                          if (value != null && value.isNotEmpty) {
+                              if (value.length < 6) {
+                                return 'Kata sandi minimal 6 karakter';
+                              }
+                              if (value == _currentPasswordController.text) {
+                                 return 'Kata sandi baru harus berbeda';
+                              }
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _confirmPasswordController,
+                        obscureText: true,
+                        enabled: canChangePassword,
+                        decoration: _inputDecoration('Konfirmasi Kata Sandi Baru', Icons.lock_person_outlined),
+                        textInputAction: TextInputAction.done,
+                         onFieldSubmitted: (_) {
+                           if (canChangePassword && !_isLoadingPassword) _changePassword();
+                         },
+                        validator: (value) {
+                           if (!canChangePassword) return null;
+                           if (_newPasswordController.text.isNotEmpty && (value == null || value.isEmpty)) {
+                             return 'Konfirmasi kata sandi diperlukan';
+                           }
+                           if (value != null && value.isNotEmpty && value != _newPasswordController.text) {
+                             return 'Kata sandi tidak cocok';
+                           }
+                           return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
 
-              // --- Security Question Section ---
-               Card(
-                 elevation: 4,
-                 color: const Color(0xFFFFF5F5).withOpacity(0.95),
-                 shape: RoundedRectangleBorder(
-                   borderRadius: BorderRadius.circular(15),
-                   side: BorderSide(color: primaryColor.withOpacity(0.3))
-                 ),
-                 clipBehavior: Clip.antiAlias,
-                 child: Padding(
-                   padding: const EdgeInsets.all(20.0),
-                   child: Form(
-                     key: _securityFormKey,
-                     child: Column(
-                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                       children: [
-                          Text(
-                           // Dynamic title based on whether question is already set
-                           _hasSecurityQuestionSet ? 'Ubah Pertanyaan Keamanan' : 'Atur Pertanyaan Keamanan',
-                           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryColor),
-                           textAlign: TextAlign.center,
-                         ),
-                         const SizedBox(height: 15),
+                const SizedBox(height: 30), // Spacer between cards
 
-                         DropdownButtonFormField<String>(
-                           value: _selectedSecurityQuestion, // Shows current value if set
+                // --- Security Question Section ---
+                _buildCard(
+                  title: _hasSecurityQuestionSet ? 'Ubah Pertanyaan Keamanan' : 'Atur Pertanyaan Keamanan',
+                  formKey: _securityFormKey,
+                  enabled: true,
+                  isLoading: _isLoadingSecurity,
+                  onSave: _saveSecurityQuestion,
+                  saveButtonText: _hasSecurityQuestionSet ? 'Update Keamanan' : 'Simpan Keamanan',
+                  child: Column(
+                     children: [
+                        DropdownButtonFormField<String>(
+                           value: _dropdownSelectedQuestion,
                            hint: const Text('Pilih Pertanyaan Keamanan'),
                            isExpanded: true,
+                           focusColor: Colors.white.withOpacity(0.1),
                            decoration: _inputDecoration('Pertanyaan', Icons.shield_outlined).copyWith(
-                             contentPadding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 10.0),
+                              contentPadding: const EdgeInsets.fromLTRB(12.0, 16.0, 12.0, 16.0),
                            ),
                            items: _securityQuestions.map((String question) {
                              return DropdownMenuItem<String>(
                                value: question,
-                               child: Text(question, overflow: TextOverflow.ellipsis),
+                               child: Text(question, overflow: TextOverflow.ellipsis, maxLines: 1,),
                              );
                            }).toList(),
                            onChanged: (String? newValue) {
-                              // Update the state variable when user makes a selection
                               setState(() {
-                                _selectedSecurityQuestion = newValue;
+                                _dropdownSelectedQuestion = newValue;
                               });
                            },
                            validator: (value) {
-                              // Question is required if the answer field has text
-                              if (_securityAnswerController.text.isNotEmpty && value == null) {
+                              if ((_securityAnswerController.text.isNotEmpty || !_hasSecurityQuestionSet) && value == null) {
                                 return 'Silakan pilih pertanyaan';
-                              }
-                              // Also required if user hasn't set one before and tries to save
-                              if (!_hasSecurityQuestionSet && value == null){
-                                  return 'Pertanyaan keamanan wajib diisi';
                               }
                              return null;
                            },
+                           dropdownColor: Colors.pink.shade50,
+                           style: TextStyle(color: Colors.black87, fontSize: 16),
                          ),
                          const SizedBox(height: 16),
                          TextFormField(
                            controller: _securityAnswerController,
                            decoration: _inputDecoration('Jawaban Anda', Icons.question_answer_outlined),
-                            // Answer field should start empty
+                           textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) {
+                              if (!_isLoadingSecurity) _saveSecurityQuestion();
+                            },
                            validator: (value) {
-                              // Answer required if a question is selected
-                              if (_selectedSecurityQuestion != null && (value == null || value.trim().isEmpty)) {
+                              if (_dropdownSelectedQuestion != null && (value == null || value.trim().isEmpty)) {
                                 return 'Jawaban tidak boleh kosong';
                               }
                              return null;
                            },
                          ),
-                         const SizedBox(height: 24),
-                         ElevatedButton(
-                           onPressed: _isLoadingSecurity ? null : _saveSecurityQuestion,
-                           style: _buttonStyle(),
-                           child: _isLoadingSecurity
-                               ? _loadingIndicator()
-                               : Text(
-                                 // Dynamic button text
-                                 _hasSecurityQuestionSet ? 'Update Keamanan' : 'Simpan Keamanan',
-                                 style: const TextStyle(fontSize: 16)
-                               ),
-                         ),
-                       ],
-                     ),
-                   ),
-                 ),
-               ),
-            ],
-          ),
+                     ],
+                  ),
+                ),
+                 const SizedBox(height: 20),
+              ],
+            ),
+        ),
       );
   }
 
-  // Helper for input decoration
+  // --- Reusable Card Widget Builder ---
+  Widget _buildCard({
+    required String title,
+    required Widget child,
+    required GlobalKey<FormState> formKey,
+    required bool enabled,
+    required bool isLoading,
+    required VoidCallback onSave,
+    required String saveButtonText,
+    String? disabledMessage,
+  }) {
+    return Card(
+       elevation: 4,
+       color: const Color(0xFFFFF5F5).withOpacity(0.96),
+       shape: RoundedRectangleBorder(
+         borderRadius: BorderRadius.circular(15),
+         side: BorderSide(color: primaryColor.withOpacity(enabled ? 0.3 : 0.15))
+       ),
+       clipBehavior: Clip.antiAlias,
+       child: IgnorePointer(
+         ignoring: !enabled,
+         child: Opacity(
+           opacity: enabled ? 1.0 : 0.6,
+           child: Padding(
+             padding: const EdgeInsets.all(20.0),
+             child: Form(
+               key: formKey,
+               child: Column(
+                 crossAxisAlignment: CrossAxisAlignment.stretch,
+                 children: [
+                   Text(
+                     title,
+                     style: TextStyle(
+                         fontSize: 20,
+                         fontWeight: FontWeight.bold,
+                         color: enabled ? primaryColor : primaryColor.withOpacity(0.6),
+                     ),
+                     textAlign: TextAlign.center,
+                   ),
+                   const SizedBox(height: 15),
+
+                   if (!enabled && disabledMessage != null)
+                     Padding(
+                       padding: const EdgeInsets.only(bottom: 15.0),
+                       child: Text(
+                         disabledMessage,
+                         textAlign: TextAlign.center,
+                         style: TextStyle(color: Colors.red.shade700.withOpacity(0.9), fontStyle: FontStyle.italic, fontSize: 13),
+                       ),
+                     ),
+
+                   child, // The actual form fields
+
+                   const SizedBox(height: 24),
+                   ElevatedButton(
+                     onPressed: enabled && !isLoading ? onSave : null,
+                     style: _buttonStyle(),
+                     child: isLoading
+                         ? _loadingIndicator()
+                         : Text(saveButtonText, style: const TextStyle(fontSize: 16)),
+                   ),
+                 ],
+               ),
+             ),
+           ),
+         ),
+       ),
+    );
+  }
+
+  // --- Helper Widgets (Input Decoration, Button Style, Loading Indicator) ---
+
   InputDecoration _inputDecoration(String label, IconData icon) {
-     // Style is kept consistent from previous versions
      return InputDecoration(
        labelText: label,
+        labelStyle: TextStyle(color: primaryColor.withOpacity(0.9)),
        prefixIcon: Icon(icon, color: primaryColor.withOpacity(0.8)),
        filled: true,
-       fillColor: Colors.white.withOpacity(0.9),
+       fillColor: Colors.white.withOpacity(0.95),
        border: OutlineInputBorder(
          borderRadius: BorderRadius.circular(12),
-         borderSide: BorderSide.none,
+         borderSide: BorderSide(color: Colors.grey.shade300, width: 1.0),
        ),
        enabledBorder: OutlineInputBorder(
          borderRadius: BorderRadius.circular(12),
-         borderSide: BorderSide(color: Colors.grey.shade300, width: 1.0),
+         borderSide: BorderSide(color: Colors.grey.shade400, width: 1.0),
        ),
        focusedBorder: OutlineInputBorder(
          borderRadius: BorderRadius.circular(12),
-         borderSide: BorderSide(color: primaryColor, width: 1.8),
+         borderSide: BorderSide(color: primaryColor, width: 2.0),
        ),
        errorBorder: OutlineInputBorder(
          borderRadius: BorderRadius.circular(12),
-         borderSide: const BorderSide(color: Colors.redAccent, width: 1.0),
+         borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
        ),
        focusedErrorBorder: OutlineInputBorder(
          borderRadius: BorderRadius.circular(12),
-         borderSide: const BorderSide(color: Colors.redAccent, width: 1.8),
+         borderSide: const BorderSide(color: Colors.redAccent, width: 2.0),
        ),
-       disabledBorder: OutlineInputBorder( // Style when disabled
+       disabledBorder: OutlineInputBorder(
          borderRadius: BorderRadius.circular(12),
-         borderSide: BorderSide(color: Colors.grey.shade300, width: 1.0),
+         borderSide: BorderSide(color: Colors.grey.shade300.withOpacity(0.7), width: 1.0),
        ),
         contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
      );
    }
 
-   // Helper for button style
    ButtonStyle _buttonStyle() {
       return ElevatedButton.styleFrom(
         backgroundColor: primaryColor,
@@ -540,11 +568,12 @@ class _AkunPageState extends State<AkunPage> {
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
         elevation: 3,
-        textStyle: const TextStyle(fontWeight: FontWeight.bold)
+        textStyle: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
+        disabledBackgroundColor: primaryColor.withOpacity(0.5),
+        disabledForegroundColor: Colors.white.withOpacity(0.8),
       );
    }
 
-   // Helper for loading indicator
    Widget _loadingIndicator() {
      return const SizedBox(
        height: 24,
