@@ -35,7 +35,7 @@ class _AkunPageState extends State<AkunPage> {
   final List<String> _securityQuestions = const [
     "Nama panggilan masa kecil?",
     "Nama hewan peliharaan pertama?",
-    "Kota kelahiran ibu?",
+    "Kota kelahiran anda?",
     "Makanan favorit Anda?",
     "Nama idola/artis favorit?"
   ];

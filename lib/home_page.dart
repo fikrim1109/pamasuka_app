@@ -137,8 +137,8 @@ class _HomePageState extends State<HomePage> {
            _hargaEntryControllersMap.clear();
            _totalHargaEntriesCount = 0;
 
-           // Reset pilihan outlet ke yang pertama jika tersedia
-           _selectedOutlet = _outlets.isNotEmpty ? _outlets[0] : null;
+          //  // Reset pilihan outlet ke yang pertama jika tersedia
+          //  _selectedOutlet = _outlets.isNotEmpty ? _outlets[0] : null;
            if (_selectedOutlet != null) {
                 _idOutletController.text = _selectedOutlet!['id_outlet']?.toString() ?? '';
                 _regionController.text = _selectedOutlet!['region'] ?? '';

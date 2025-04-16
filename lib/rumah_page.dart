@@ -133,7 +133,7 @@ class _RumahPageState extends State<RumahPage> {
            _totalHargaEntriesCount = 0;
 
            // Reset outlet selection to the first one if available
-           _selectedOutlet = _outlets.isNotEmpty ? _outlets[0] : null;
+          //  _selectedOutlet = _outlets.isNotEmpty ? _outlets[0] : null;
            if (_selectedOutlet != null) {
                 _idOutletController.text = _selectedOutlet!['id_outlet']?.toString() ?? '';
                 _regionController.text = _selectedOutlet!['region'] ?? '';
