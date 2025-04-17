@@ -7,6 +7,7 @@ import 'package:pamasuka/login_page.dart'; // Verify path
 // --- IMPORTANT: Verify these paths match your actual file locations ---
 // If these files/paths are incorrect, navigation will fail.
 import 'package:pamasuka/home_page.dart'; // <-- VERIFY THIS PATH
+import 'package:pamasuka/performapage.dart';
 import 'package:pamasuka/rumah_page.dart'; // <-- VERIFY THIS PATH
 // --- ---
 
@@ -265,7 +266,19 @@ class BottomNavBar extends StatelessWidget {
                  );
               },
             ),
-
+  
+           _NavBarItem(
+  icon: Icons.analytics_outlined,
+  label: 'Performa',
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PerformaPage(userId: userId),
+      ),
+    );
+  },
+),
             // --- Navigation Item: Akun (AkunPage) ---
             _NavBarItem(
               icon: Icons.account_circle_outlined,
