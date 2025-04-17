@@ -103,7 +103,7 @@ class _PerformaPageState extends State<PerformaPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Performa Outlet'),
+        title: const Text('Performa SF'),
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
         actions: [
