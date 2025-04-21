@@ -271,6 +271,11 @@ class BottomNavBar extends StatelessWidget {
   icon: Icons.analytics_outlined,
   label: 'Performa',
   onTap: () {
+    if (!isNormalUser) {
+      _showAccessDeniedDialog(context);
+      return;
+    } // Check if the user is a normal user
+    // If they are not, show the access denied dialog and return early
     Navigator.push(
       context,
       MaterialPageRoute(
