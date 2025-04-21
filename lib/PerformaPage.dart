@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
+import 'package:pamasuka/viewform.dart'; // Import ViewFormPage
 
 class PerformaPage extends StatefulWidget {
   final int userId;
@@ -150,27 +151,40 @@ class _PerformaPageState extends State<PerformaPage> {
                                 itemCount: _outletVisits.length,
                                 itemBuilder: (context, index) {
                                   final visit = _outletVisits[index];
-                                  return Card(
-                                    margin: const EdgeInsets.symmetric(vertical: 8),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    elevation: 4,
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              visit.outletName,
-                                              style: const TextStyle(fontSize: 16),
-                                              overflow: TextOverflow.ellipsis,
+                                  return GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ViewFormPage(
+                                            outletName: visit.outletName,
+                                            userId: widget.userId,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: Card(
+                                      margin: const EdgeInsets.symmetric(vertical: 8),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      elevation: 4,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(16),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                visit.outletName,
+                                                style: const TextStyle(fontSize: 16),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
                                             ),
-                                          ),
-                                          Text(
-                                            '${visit.visitCount} kunjungan',
-                                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                          ),
-                                        ],
+                                            Text(
+                                              '${visit.visitCount} kunjungan',
+                                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   );
