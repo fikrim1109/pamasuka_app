@@ -252,7 +252,7 @@ class BottomNavBar extends StatelessWidget {
             // --- Navigation Item: Outlet Non PJP (RumahPage) ---
             _NavBarItem(
               icon: Icons.home_work_outlined,
-              label: 'Outlet Non PJP',
+              label: 'Non PJP',
               onTap: () {
                 if (isNormalUser) {
                    _showAccessDeniedDialog(context);
