@@ -1,14 +1,16 @@
 // File: lib/menu_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pamasuka/akunpage.dart'; // Verify path
-import 'package:pamasuka/login_page.dart'; // Verify path
+// Corrected import path if needed, ensure case sensitivity matches file name
+import 'package:pamasuka/Laporan_Penjualan.dart'; // Corrected import
+import 'package:pamasuka/akunpage.dart';       // Verify path
+import 'package:pamasuka/login_page.dart';     // Verify path
 
 // --- IMPORTANT: Verify these paths match your actual file locations ---
 // If these files/paths are incorrect, navigation will fail.
-import 'package:pamasuka/home_page.dart'; // <-- VERIFY THIS PATH
-import 'package:pamasuka/performapage.dart';
-import 'package:pamasuka/rumah_page.dart'; // <-- VERIFY THIS PATH
+import 'package:pamasuka/home_page.dart';      // <-- VERIFY THIS PATH (Used for Outlet PJP)
+import 'package:pamasuka/rumah_page.dart';     // <-- VERIFY THIS PATH (Used for Outlet Non PJP)
+import 'package:pamasuka/performapage.dart';   // <-- VERIFY THIS PATH
 // --- ---
 
 // --- User ID Range Definition ---
@@ -67,17 +69,15 @@ class MenuPage extends StatelessWidget {
         ),
         child: SafeArea(
           child: Column(
-            // FIX: Use MainAxisAlignment.center along with Spacers for flexible centering
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // FIX: Add Spacer to push content down from the AppBar
-              const Spacer(),
+              const Spacer(), // Push content down from AppBar
 
               // IMPROVEMENT: Added comment recommending asset constants
               Image.asset(
                 'images/Samalonian_app.png', // Ensure path is correct and in pubspec.yaml
-                height: MediaQuery.of(context).size.height * 0.22, // Adjusted height slightly if needed
+                height: MediaQuery.of(context).size.height * 0.22,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
                   print("Error loading menu logo: $error");
@@ -129,12 +129,12 @@ class MenuPage extends StatelessWidget {
                 ),
               ),
 
-              // FIX: Add Spacer to push content up from the BottomNavBar
-              const Spacer(),
+              const Spacer(), // Push content up from BottomNavBar
             ],
           ),
         ),
       ),
+      // --- UPDATED Bottom Navigation Bar ---
       bottomNavigationBar: Material(
         elevation: 10,
         color: Colors.white,
@@ -144,7 +144,7 @@ class MenuPage extends StatelessWidget {
   }
 }
 
-// --- Bottom Navigation Bar Widget --- (Code remains the same as previous version)
+// --- UPDATED Bottom Navigation Bar Widget ---
 class BottomNavBar extends StatelessWidget {
   final String username;
   final int userId;
@@ -154,10 +154,10 @@ class BottomNavBar extends StatelessWidget {
     Key? key,
     required this.username,
     required this.userId,
-    required this.isNormalUser, // Added parameter
+    required this.isNormalUser,
   }) : super(key: key);
 
-  // --- Helper function to show access denied dialog ---
+  // --- Helper function to show access denied dialog (Unchanged) ---
   void _showAccessDeniedDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -172,38 +172,37 @@ class BottomNavBar extends StatelessWidget {
         content: const Text('Anda tidak memiliki izin untuk mengakses halaman ini.'),
         actions: [
           TextButton(
-            style: TextButton.styleFrom(foregroundColor: Colors.redAccent), // Themed button
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
             onPressed: () => Navigator.pop(context),
             child: const Text('OK'),
           ),
         ],
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)), // Rounded dialog
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
       ),
     );
   }
   // --- ---
 
-  // --- Helper function for Logout Dialog ---
+  // --- Helper function for Logout Dialog (Unchanged) ---
    void _showLogoutConfirmationDialog(BuildContext context) {
      showDialog(
        context: context,
-       barrierDismissible: false, // User must explicitly choose an action
+       barrierDismissible: false,
        builder: (context) => AlertDialog(
          title: const Text('Konfirmasi Logout'),
          content: const Text('Apakah Anda yakin ingin keluar?'),
          actions: [
            TextButton(
-             onPressed: () => Navigator.pop(context), // Close the dialog
+             onPressed: () => Navigator.pop(context),
              child: const Text('Batal'),
            ),
            TextButton(
              onPressed: () {
-               Navigator.pop(context); // Close the dialog first
-               // Navigate back to Login Page and remove all previous routes
+               Navigator.pop(context);
                Navigator.pushAndRemoveUntil(
                  context,
                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                 (route) => false, // This predicate removes all routes
+                 (route) => false,
                );
              },
              child: const Text('Logout', style: TextStyle(color: Colors.red)),
@@ -215,27 +214,97 @@ class BottomNavBar extends StatelessWidget {
    }
    // --- ---
 
+  // --- NEW Helper function to show Laporan options ---
+  void _showLaporanOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder( // Add rounded corners
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+      ),
+      builder: (BuildContext bc) {
+        return SafeArea( // Ensure content is not obstructed by system UI
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Wrap( // Use Wrap for simple vertical list
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: Text(
+                    'Pilih Jenis Laporan',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.store_mall_directory, color: Colors.redAccent),
+                  title: const Text('Outlet PJP'),
+                  onTap: () {
+                    Navigator.pop(context); // Close the bottom sheet first
+                    if (!isNormalUser) {
+                      _showAccessDeniedDialog(context);
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => HomePage(username: username, userId: userId),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.home_work, color: Colors.redAccent),
+                  title: const Text('Outlet Non PJP'),
+                  onTap: () {
+                    Navigator.pop(context); // Close the bottom sheet first
+                    if (isNormalUser) {
+                      _showAccessDeniedDialog(context);
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => RumahPage(username: username, userId: userId),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  // --- ---
+
   @override
   Widget build(BuildContext context) {
-    // User type (isNormalUser) is now passed in, no need to recalculate here
-
     return Container(
-      // Add some padding around the entire bar for breathing room
       padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
-      // Use SafeArea to avoid system intrusions at the bottom (like gesture bar)
       child: SafeArea(
-        bottom: true, // Ensure padding only at bottom if needed
-        top: false, // No padding needed at top
+        bottom: true,
+        top: false,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
 
-            // --- Navigation Item: Outlet PJP (HomePage) ---
+            // --- Navigation Item: Laporan (Shows Bottom Sheet) ---
             _NavBarItem(
-              icon: Icons.store_mall_directory_outlined,
-              label: 'Outlet PJP',
+              icon: Icons.description_outlined, // Changed icon
+              label: 'Laporan',
               onTap: () {
+                _showLaporanOptions(context); // Call the helper to show options
+              },
+            ),
+
+            // --- Navigation Item: Penjualan ---
+            _NavBarItem(
+              icon: Icons.point_of_sale_outlined, // New icon
+              label: 'Penjualan',
+              onTap: () {
+                // **ACCESS CONTROL:** Assuming only NORMAL users can access Penjualan
                 if (!isNormalUser) {
                   _showAccessDeniedDialog(context);
                   return;
@@ -243,48 +312,38 @@ class BottomNavBar extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => HomePage(username: username, userId: userId),
+                    // *** FIXED: Added the required 'outletType' parameter ***
+                    // Assuming 'PJP' is the correct type for normal users accessing sales reports.
+                    // Adjust 'PJP' if your LaporanPenjualan expects a different value or enum.
+                    builder: (context) => LaporanPenjualan(
+                      username: username,
+                      userId: userId,
+                      outletType: 'PJP', // <-- FIX: Added required parameter
+                    ),
                   ),
                 );
               },
             ),
 
-            // --- Navigation Item: Outlet Non PJP (RumahPage) ---
+            // --- Navigation Item: Performa (Access Control for Normal Users) ---
             _NavBarItem(
-              icon: Icons.home_work_outlined,
-              label: 'Outlet Non PJP',
+              icon: Icons.analytics_outlined,
+              label: 'Performa',
               onTap: () {
-                if (isNormalUser) {
-                   _showAccessDeniedDialog(context);
-                   return;
+                if (!isNormalUser) { // Only normal users can access
+                  _showAccessDeniedDialog(context);
+                  return;
                 }
-                 Navigator.push(
-                   context,
-                   MaterialPageRoute(
-                     builder: (context) => RumahPage(username: username, userId: userId),
-                   ),
-                 );
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PerformaPage(userId: userId),
+                  ),
+                );
               },
             ),
-  
-           _NavBarItem(
-  icon: Icons.analytics_outlined,
-  label: 'Performa',
-  onTap: () {
-    if (!isNormalUser) {
-      _showAccessDeniedDialog(context);
-      return;
-    } // Check if the user is a normal user
-    // If they are not, show the access denied dialog and return early
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PerformaPage(userId: userId),
-      ),
-    );
-  },
-),
-            // --- Navigation Item: Akun (AkunPage) ---
+
+            // --- Navigation Item: Akun (Accessible by All) ---
             _NavBarItem(
               icon: Icons.account_circle_outlined,
               label: 'Akun',
@@ -316,7 +375,7 @@ class BottomNavBar extends StatelessWidget {
   }
 }
 
-// --- Reusable Bottom Navigation Bar Item Widget --- (Code remains the same as previous version)
+// --- Reusable Bottom Navigation Bar Item Widget (Unchanged) ---
 class _NavBarItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -341,6 +400,7 @@ class _NavBarItem extends StatelessWidget {
         onTap: onTap,
         splashColor: splashColor,
         highlightColor: highlightColor,
+        // tooltip: label, // Optional: Add tooltip
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
           child: Column(
@@ -370,3 +430,29 @@ class _NavBarItem extends StatelessWidget {
     );
   }
 }
+
+// --- Reminder: Ensure Laporan_Penjualan.dart defines the LaporanPenjualan widget ---
+// --- with a constructor like:                                                  ---
+/*
+class LaporanPenjualan extends StatelessWidget {
+  final String username;
+  final int userId;
+  final String outletType; // Make sure this exists and is required
+
+  const LaporanPenjualan({
+    Key? key,
+    required this.username,
+    required this.userId,
+    required this.outletType, // Declared as required
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    // ... Your page implementation ...
+    return Scaffold(
+      appBar: AppBar(title: Text('Laporan Penjualan ($outletType)')),
+      body: Center(child: Text('Data Penjualan for User $userId ($username)')),
+    );
+  }
+}
+*/
