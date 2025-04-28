@@ -3,11 +3,11 @@ import 'dart:convert';
 import 'dart:async'; // For Timer/TimeoutException
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:google_fonts/google_fonts.dart'; // For Poppins font
 import 'package:pamasuka/login_page.dart'; // For navigation back to login
 
-// Use the same base URL as defined elsewhere or keep it here if needed
-// Ensure consistency across files that use the API
-const String _apiBaseUrl = 'https://tunnel.jato.my.id/test%20api'; // Kept as requested
+// Use the same base URL as defined elsewhere
+const String _apiBaseUrl = 'https://tunnel.jato.my.id/test%20api';
 
 // Enum to manage the current step in the forgot password flow
 enum ForgotPasswordStep { enterUsername, answerQuestion, resetPassword }
@@ -38,9 +38,7 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
   final GlobalKey<FormState> _answerFormKey = GlobalKey<FormState>();
   final GlobalKey<FormState> _resetPasswordFormKey = GlobalKey<FormState>();
 
-  // Theme Colors (Consider defining these globally if used across many pages)
-  final Color startColor = const Color(0xFFFFB6B6);
-  final Color endColor = const Color(0xFFFF8E8E);
+  // Theme Colors
   final Color primaryColor = const Color(0xFFC0392B);
 
   @override
@@ -57,8 +55,8 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.redAccent : Colors.green,
+        content: Text(message, style: GoogleFonts.poppins(color: Colors.white, fontSize: 14)),
+        backgroundColor: isError ? Colors.red : Colors.green,
         behavior: SnackBarBehavior.floating,
         duration: Duration(seconds: isError ? 4 : 3),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -68,7 +66,6 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
   }
 
   // --- API Helper: Generic Request Handling ---
-  // IMPROVEMENT: Extracted common API request logic to reduce repetition
   Future<Map<String, dynamic>?> _makeApiRequest({
     required String endpoint,
     required Map<String, dynamic> body,
@@ -104,7 +101,7 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200 && data is Map<String, dynamic> && data['success'] == true) {
-         return data; // Return successful data
+        return data; // Return successful data
       } else {
         // Handle API errors (success: false or non-200 status)
         final String message = data is Map<String, dynamic> ? (data['message'] ?? 'Unknown API error.') : 'Invalid response structure.';
@@ -121,7 +118,7 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
     } on http.ClientException catch (e) {
       setState(() { _errorMessage = '$errorMessagePrefix: Network error: ${e.message}'; });
       print("API ClientException ($endpoint): $e");
-       return null;
+      return null;
     } catch (e) {
       setState(() { _errorMessage = '$errorMessagePrefix: An unexpected error occurred.'; });
       print("API General Exception ($endpoint): $e");
@@ -133,7 +130,6 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
     }
   }
 
-
   // --- Step 1: Fetch Security Question ---
   Future<void> _fetchSecurityQuestion() async {
     // Validate the specific form for this step
@@ -141,62 +137,60 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
 
     final String currentUsername = _usernameController.text.trim();
     final data = await _makeApiRequest(
-        endpoint: 'getsecurityquestion.php',
-        // Use GET as per original code comment (php script likely checks $_GET)
-        method: 'GET',
-        // For GET, parameters are usually in the URL, so pass them as 'body' for helper
-        body: {'username': currentUsername},
-        loadingMessage: 'Fetching question...',
-        errorMessagePrefix: 'Failed to fetch question',
+      endpoint: 'getsecurityquestion.php',
+      method: 'GET',
+      body: {'username': currentUsername},
+      loadingMessage: 'Fetching question...',
+      errorMessagePrefix: 'Failed to fetch question',
     );
 
     if (data != null && data['question'] != null) {
       // Success: Update state and move to next step
       if (mounted) {
-          setState(() {
-              _username = currentUsername; // Store username only on success
-              _securityQuestion = data['question'];
-              _currentStep = ForgotPasswordStep.answerQuestion;
-              _securityAnswerController.clear(); // Clear answer field for new step
-          });
-       }
+        setState(() {
+          _username = currentUsername; // Store username only on success
+          _securityQuestion = data['question'];
+          _currentStep = ForgotPasswordStep.answerQuestion;
+          _securityAnswerController.clear(); // Clear answer field for new step
+        });
+      }
     }
     // Error message is handled within _makeApiRequest
   }
 
   // --- Step 2: Verify Security Answer ---
   Future<void> _verifySecurityAnswer() async {
-     // Validate the specific form for this step
+    // Validate the specific form for this step
     if (!_answerFormKey.currentState!.validate()) return;
 
     final data = await _makeApiRequest(
-        endpoint: 'verifysecurityanswer.php',
-        body: {
-          'username': _username, // Use stored username
-          'answer': _securityAnswerController.text.trim(),
-        },
-        loadingMessage: 'Verifying answer...',
-        errorMessagePrefix: 'Failed to verify answer',
+      endpoint: 'verifysecurityanswer.php',
+      body: {
+        'username': _username, // Use stored username
+        'answer': _securityAnswerController.text.trim(),
+      },
+      loadingMessage: 'Verifying answer...',
+      errorMessagePrefix: 'Failed to verify answer',
     );
 
-     if (data != null && data['correct'] == true) {
-       // Success: Move to reset password step
-        if(mounted){
-             setState(() {
-                _currentStep = ForgotPasswordStep.resetPassword;
-                _newPasswordController.clear(); // Clear password fields for new step
-                _confirmPasswordController.clear();
-             });
-        }
+    if (data != null && data['correct'] == true) {
+      // Success: Move to reset password step
+      if (mounted) {
+        setState(() {
+          _currentStep = ForgotPasswordStep.resetPassword;
+          _newPasswordController.clear(); // Clear password fields for new step
+          _confirmPasswordController.clear();
+        });
+      }
     } else if (data != null && data['correct'] == false) {
-        // API indicates answer was incorrect, keep user on this step
-        if(mounted) {
-            setState(() {
-                 _errorMessage = data['message'] ?? 'Jawaban keamanan salah.';
-            });
-        }
+      // API indicates answer was incorrect, keep user on this step
+      if (mounted) {
+        setState(() {
+          _errorMessage = data['message'] ?? 'Jawaban keamanan salah.';
+        });
+      }
     }
-     // Other errors handled by _makeApiRequest
+    // Other errors handled by _makeApiRequest
   }
 
   // --- Step 3: Reset Password ---
@@ -205,26 +199,26 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
     if (!_resetPasswordFormKey.currentState!.validate()) return;
 
     final data = await _makeApiRequest(
-        endpoint: 'resetpassword.php',
-        body: {
-          'username': _username, // Use stored username
-          'newPassword': _newPasswordController.text, // Send the new password
-        },
-        loadingMessage: 'Resetting password...',
-        errorMessagePrefix: 'Failed to reset password',
+      endpoint: 'resetpassword.php',
+      body: {
+        'username': _username, // Use stored username
+        'newPassword': _newPasswordController.text,
+      },
+      loadingMessage: 'Resetting password...',
+      errorMessagePrefix: 'Failed to reset password',
     );
 
-     if (data != null) {
-       // Success: Show success message and navigate back to login
-       _showSnackBar(data['message'] ?? 'Kata sandi berhasil direset.');
-       if(mounted) {
-         // Use pushAndRemoveUntil to clear stack and go to login
-         Navigator.of(context).pushAndRemoveUntil(
-           MaterialPageRoute(builder: (context) => const LoginPage()),
-           (Route<dynamic> route) => false, // Remove all previous routes
-         );
-       }
-     }
+    if (data != null) {
+      // Success: Show success message and navigate back to login
+      _showSnackBar(data['message'] ?? 'Kata sandi berhasil direset.');
+      if (mounted) {
+        // Use pushAndRemoveUntil to clear stack and go to login
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+          (Route<dynamic> route) => false, // Remove all previous routes
+        );
+      }
+    }
     // Errors handled by _makeApiRequest
   }
 
@@ -257,26 +251,27 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'Masukkan Nama Pengguna Anda',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87),
+            style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
             textAlign: TextAlign.center,
-           ),
+          ),
           const SizedBox(height: 25),
           TextFormField(
             controller: _usernameController,
             decoration: _inputDecoration('Nama Pengguna', Icons.person_search_outlined),
             keyboardType: TextInputType.text,
-             textInputAction: TextInputAction.done,
-             enabled: !_isLoading, // Disable when loading
-             autofocus: true,
-             onFieldSubmitted: (_) => _isLoading ? null : _fetchSecurityQuestion(),
+            textInputAction: TextInputAction.done,
+            enabled: !_isLoading,
+            autofocus: true,
+            onFieldSubmitted: (_) => _isLoading ? null : _fetchSecurityQuestion(),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'Nama pengguna tidak boleh kosong';
               }
               return null;
             },
+            style: GoogleFonts.poppins(color: Colors.black87),
           ),
           const SizedBox(height: 20),
           // Show step-specific error message if any
@@ -285,14 +280,16 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
               padding: const EdgeInsets.only(bottom: 15.0),
               child: Text(
                 _errorMessage,
-                style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w500),
+                style: GoogleFonts.poppins(color: Colors.redAccent, fontSize: 12),
                 textAlign: TextAlign.center,
               ),
             ),
           ElevatedButton(
             onPressed: _isLoading ? null : _fetchSecurityQuestion,
             style: _buttonStyle(),
-            child: _isLoading ? _loadingIndicator() : const Text('LANJUT', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            child: _isLoading
+                ? _loadingIndicator()
+                : Text('Lanjut', style: GoogleFonts.poppins(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -307,10 +304,10 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'Jawab Pertanyaan Keamanan Berikut',
-             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87),
-             textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
           // Display the security question
@@ -318,13 +315,13 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
             width: double.infinity,
             decoration: BoxDecoration(
-              color: Colors.grey[200]?.withOpacity(0.8),
+              color: Colors.grey.shade200,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[350] ?? Colors.grey)
+              border: Border.all(color: Colors.grey.shade300),
             ),
             child: Text(
-              _securityQuestion, // Display fetched question
-              style: const TextStyle(fontSize: 16, fontStyle: FontStyle.italic, color: Colors.black87),
+              _securityQuestion,
+              style: GoogleFonts.poppins(fontSize: 14, color: Colors.black87),
               textAlign: TextAlign.center,
             ),
           ),
@@ -334,7 +331,7 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
             decoration: _inputDecoration('Jawaban Anda', Icons.question_answer_outlined),
             keyboardType: TextInputType.text,
             textInputAction: TextInputAction.done,
-             enabled: !_isLoading, // Disable when loading
+            enabled: !_isLoading,
             autofocus: true,
             onFieldSubmitted: (_) => _isLoading ? null : _verifySecurityAnswer(),
             validator: (value) {
@@ -343,37 +340,45 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
               }
               return null;
             },
+            style: GoogleFonts.poppins(color: Colors.black87),
           ),
           const SizedBox(height: 20),
-           if (_errorMessage.isNotEmpty)
+          if (_errorMessage.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 15.0),
               child: Text(
                 _errorMessage,
-                style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w500),
+                style: GoogleFonts.poppins(color: Colors.redAccent, fontSize: 12),
                 textAlign: TextAlign.center,
               ),
             ),
           ElevatedButton(
             onPressed: _isLoading ? null : _verifySecurityAnswer,
             style: _buttonStyle(),
-            child: _isLoading ? _loadingIndicator() : const Text('Verifikasi Jawaban', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            child: _isLoading
+                ? _loadingIndicator()
+                : Text('Verifikasi Jawaban', style: GoogleFonts.poppins(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold)),
           ),
           const SizedBox(height: 10),
           // Option to go back
-           Center(
-             child: TextButton(
-              onPressed: _isLoading ? null : () {
-                  setState(() {
-                    _currentStep = ForgotPasswordStep.enterUsername;
-                    _errorMessage = ''; // Clear error for the new step
-                    _securityAnswerController.clear(); // Clear field from this step
-                    // Keep username field populated
-                  });
-                },
-              child: Text('<< Kembali ke Nama Pengguna', style: TextStyle(color: primaryColor.withOpacity(0.9))),
-             ),
-           ),
+          Center(
+            child: TextButton(
+              onPressed: _isLoading
+                  ? null
+                  : () {
+                      setState(() {
+                        _currentStep = ForgotPasswordStep.enterUsername;
+                        _errorMessage = ''; // Clear error for the new step
+                        _securityAnswerController.clear(); // Clear field from this step
+                        // Keep username field populated
+                      });
+                    },
+              child: Text(
+                '<< Kembali ke Nama Pengguna',
+                style: GoogleFonts.poppins(color: primaryColor, fontSize: 12),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -387,38 +392,38 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-           const Text(
-             'Masukkan Kata Sandi Baru Anda',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87),
-              textAlign: TextAlign.center,
-            ),
-           const SizedBox(height: 25),
+          Text(
+            'Masukkan Kata Sandi Baru Anda',
+            style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 25),
           TextFormField(
             controller: _newPasswordController,
             obscureText: true,
             decoration: _inputDecoration('Kata Sandi Baru', Icons.lock_person_outlined),
             textInputAction: TextInputAction.next,
-             enabled: !_isLoading, // Disable when loading
+            enabled: !_isLoading,
             autofocus: true,
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Kata sandi baru tidak boleh kosong';
               }
               if (value.length < 6) {
-                 return 'Kata sandi minimal 6 karakter';
+                return 'Kata sandi minimal 6 karakter';
               }
-              // Potential improvement: Prevent using the same username as password, etc.
               return null;
             },
+            style: GoogleFonts.poppins(color: Colors.black87),
           ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _confirmPasswordController,
             obscureText: true,
-             decoration: _inputDecoration('Konfirmasi Kata Sandi Baru', Icons.lock_outline),
-             textInputAction: TextInputAction.done,
-              enabled: !_isLoading, // Disable when loading
-             onFieldSubmitted: (_) => _isLoading ? null : _resetPassword(),
+            decoration: _inputDecoration('Konfirmasi Kata Sandi Baru', Icons.lock_outline),
+            textInputAction: TextInputAction.done,
+            enabled: !_isLoading,
+            onFieldSubmitted: (_) => _isLoading ? null : _resetPassword(),
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Konfirmasi kata sandi tidak boleh kosong';
@@ -428,23 +433,25 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
               }
               return null;
             },
+            style: GoogleFonts.poppins(color: Colors.black87),
           ),
           const SizedBox(height: 20),
-           if (_errorMessage.isNotEmpty)
+          if (_errorMessage.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 15.0),
               child: Text(
                 _errorMessage,
-                 style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w500),
+                style: GoogleFonts.poppins(color: Colors.redAccent, fontSize: 12),
                 textAlign: TextAlign.center,
               ),
             ),
           ElevatedButton(
             onPressed: _isLoading ? null : _resetPassword,
             style: _buttonStyle(),
-            child: _isLoading ? _loadingIndicator() : const Text('Simpan Kata Sandi Baru', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            child: _isLoading
+                ? _loadingIndicator()
+                : Text('Simpan Kata Sandi Baru', style: GoogleFonts.poppins(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold)),
           ),
-          // No back button here, user should complete or cancel via AppBar back button
         ],
       ),
     );
@@ -453,50 +460,37 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-       appBar: AppBar(
-        title: const Text('Lupa Kata Sandi'),
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 2,
-        leading: IconButton( // Provide a consistent way back
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text('Lupa Kata Sandi', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFFFFF5F5),
+        foregroundColor: primaryColor,
+        elevation: 4,
+        shadowColor: Colors.black26,
+        leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          // Disable back button during network request to avoid interrupting flow
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
         ),
       ),
-      body: Container(
-         width: double.infinity,
-         height: double.infinity,
-         decoration: BoxDecoration(
-           gradient: LinearGradient(
-             colors: [startColor, endColor],
-             begin: Alignment.topCenter,
-             end: Alignment.bottomCenter,
-           ),
-         ),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
         child: Center(
-          child: SingleChildScrollView( // Ensure scrolling if content overflows
+          child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 30.0),
             child: Card(
-              elevation: 6,
-              color: const Color(0xFFFFF5F5).withOpacity(0.97),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-                side: BorderSide(color: primaryColor.withOpacity(0.3))
-              ),
-              clipBehavior: Clip.antiAlias, // Helps with shape rendering
+              elevation: 3,
+              color: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 28.0), // Adjusted padding
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
                 child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300), // Slightly faster transition
-                    switchInCurve: Curves.easeIn, // Standard curves
-                    switchOutCurve: Curves.easeOut,
-                    transitionBuilder: (Widget child, Animation<double> animation) {
-                      // Fade transition (simple and effective)
-                      return FadeTransition(opacity: animation, child: child);
-                    },
-                    // The child's key ensures AnimatedSwitcher detects the change
-                    child: _buildCurrentStepWidget(),
+                  duration: const Duration(milliseconds: 300),
+                  switchInCurve: Curves.easeIn,
+                  switchOutCurve: Curves.easeOut,
+                  transitionBuilder: (Widget child, Animation<double> animation) {
+                    return FadeTransition(opacity: animation, child: child);
+                  },
+                  child: _buildCurrentStepWidget(),
                 ),
               ),
             ),
@@ -509,61 +503,61 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
   // --- Helper Widgets ---
 
   InputDecoration _inputDecoration(String label, IconData icon) {
-     return InputDecoration(
-       labelText: label,
-       labelStyle: TextStyle(color: primaryColor.withOpacity(0.9)), // Slightly more prominent label
-       prefixIcon: Icon(icon, color: primaryColor.withOpacity(0.8)),
-       filled: true,
-       fillColor: Colors.white.withOpacity(0.95), // Slightly more opaque fill
-       border: OutlineInputBorder( // Define base border
-         borderRadius: BorderRadius.circular(12),
-         borderSide: BorderSide(color: Colors.grey.shade300, width: 1.0),
-       ),
-       enabledBorder: OutlineInputBorder(
-         borderRadius: BorderRadius.circular(12),
-         borderSide: BorderSide(color: Colors.grey.shade400, width: 1.0), // Slightly darker enabled border
-       ),
-       focusedBorder: OutlineInputBorder(
-         borderRadius: BorderRadius.circular(12),
-         borderSide: BorderSide(color: primaryColor, width: 2.0), // Thicker focus
-       ),
-       errorBorder: OutlineInputBorder(
-         borderRadius: BorderRadius.circular(12),
-         borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
-       ),
-       focusedErrorBorder: OutlineInputBorder(
-         borderRadius: BorderRadius.circular(12),
-         borderSide: const BorderSide(color: Colors.redAccent, width: 2.0), // Thicker error focus
-       ),
-       disabledBorder: OutlineInputBorder( // Style when disabled
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300.withOpacity(0.7), width: 1.0),
-        ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
-     );
-   }
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: Colors.grey.shade600),
+      labelStyle: GoogleFonts.poppins(color: Colors.grey.shade600),
+      filled: true,
+      fillColor: Colors.grey.shade100,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: primaryColor, width: 2),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.redAccent, width: 1.2),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.redAccent, width: 2),
+      ),
+      contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
+    );
+  }
 
-   ButtonStyle _buttonStyle() {
-      return ElevatedButton.styleFrom(
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-        elevation: 3,
-        textStyle: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5), // Added letter spacing
-        disabledBackgroundColor: primaryColor.withOpacity(0.5), // Visual feedback when disabled
-        disabledForegroundColor: Colors.white.withOpacity(0.8),
-      );
-   }
+  ButtonStyle _buttonStyle() {
+    return ElevatedButton.styleFrom(
+      backgroundColor: primaryColor,
+      foregroundColor: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 3,
+      disabledBackgroundColor: Colors.grey.shade400,
+      disabledForegroundColor: Colors.white70,
+      textStyle: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold),
+    );
+  }
 
-   Widget _loadingIndicator() {
-     return const SizedBox(
-       height: 24,
-       width: 24,
-       child: CircularProgressIndicator(
-         color: Colors.white,
-         strokeWidth: 3,
-        ),
-     );
-   }
+  Widget _loadingIndicator() {
+    return const SizedBox(
+      height: 20,
+      width: 20,
+      child: CircularProgressIndicator(
+        color: Colors.white,
+        strokeWidth: 2.5,
+      ),
+    );
+  }
 }

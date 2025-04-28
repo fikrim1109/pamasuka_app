@@ -1,7 +1,9 @@
+// File: lib/PerformaPage.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:pamasuka/viewform.dart'; // Import ViewFormPage
 
 class PerformaPage extends StatefulWidget {
@@ -20,8 +22,6 @@ class _PerformaPageState extends State<PerformaPage> {
   String? _selectedFilter;
 
   // Warna konsisten
-  final Color startColor = const Color(0xFFFFB6B6);
-  final Color endColor = const Color(0xFFFF8E8E);
   final Color primaryColor = const Color(0xFFC0392B);
 
   // Nama bulan dalam Bahasa Indonesia
@@ -100,54 +100,121 @@ class _PerformaPageState extends State<PerformaPage> {
     _fetchData();
   }
 
+  // --- Input Decoration Helper ---
+  InputDecoration _inputDecoration({
+    required String label,
+    String? hint,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: Icon(Icons.filter_list, color: Colors.grey.shade600),
+      labelStyle: GoogleFonts.poppins(color: Colors.grey.shade600),
+      filled: true,
+      fillColor: Colors.grey.shade100,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: primaryColor, width: 2),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.redAccent, width: 1.2),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.redAccent, width: 2),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Performa SF'),
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
+        title: Text('Performa SF', style: GoogleFonts.poppins()),
+        centerTitle: true,
+        backgroundColor: const Color(0xFFFFF5F5),
+        foregroundColor: primaryColor,
+        elevation: 4,
+        shadowColor: Colors.black26,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh, color: primaryColor),
             onPressed: _isLoading ? null : _fetchData,
+            tooltip: 'Segarkan Data',
           ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [startColor, endColor],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: primaryColor),
+                    const SizedBox(height: 15),
+                    Text('Memuat data...', style: GoogleFonts.poppins()),
+                  ],
+                ),
+              )
             : _errorMessage != null
                 ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('Kesalahan: $_errorMessage', style: const TextStyle(color: Colors.redAccent)),
+                        Text(
+                          'Kesalahan: $_errorMessage',
+                          style: GoogleFonts.poppins(color: Colors.redAccent),
+                        ),
                         const SizedBox(height: 10),
                         ElevatedButton(
                           onPressed: _fetchData,
-                          style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white),
-                          child: const Text('Coba Lagi'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: Text('Coba Lagi', style: GoogleFonts.poppins()),
                         ),
                       ],
                     ),
                   )
-                : Column(
-                    children: [
-                      _buildFilterDropdown(),
-                      _buildMonthlyChart(),
-                      Expanded(
-                        child: _outletVisits.isEmpty
-                            ? const Center(child: Text('Tidak ada data untuk periode ini'))
+                : SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildFilterDropdown(),
+                        _buildMonthlyChart(),
+                        _outletVisits.isEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Center(
+                                  child: Text(
+                                    'Tidak ada data untuk periode ini',
+                                    style: GoogleFonts.poppins(fontSize: 14),
+                                  ),
+                                ),
+                              )
                             : ListView.builder(
-                                padding: const EdgeInsets.all(16.0),
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                                 itemCount: _outletVisits.length,
                                 itemBuilder: (context, index) {
                                   final visit = _outletVisits[index];
@@ -165,8 +232,8 @@ class _PerformaPageState extends State<PerformaPage> {
                                     },
                                     child: Card(
                                       margin: const EdgeInsets.symmetric(vertical: 8),
+                                      elevation: 2,
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                      elevation: 4,
                                       child: Padding(
                                         padding: const EdgeInsets.all(16),
                                         child: Row(
@@ -175,13 +242,13 @@ class _PerformaPageState extends State<PerformaPage> {
                                             Expanded(
                                               child: Text(
                                                 visit.outletName,
-                                                style: const TextStyle(fontSize: 16),
+                                                style: GoogleFonts.poppins(fontSize: 14),
                                                 overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                             Text(
                                               '${visit.visitCount} kunjungan',
-                                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold),
                                             ),
                                           ],
                                         ),
@@ -190,8 +257,8 @@ class _PerformaPageState extends State<PerformaPage> {
                                   );
                                 },
                               ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
       ),
     );
@@ -199,41 +266,56 @@ class _PerformaPageState extends State<PerformaPage> {
 
   Widget _buildFilterDropdown() {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Filter Berdasarkan Periode',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              DropdownButton<String?>(
-                value: _selectedFilter,
-                isExpanded: true,
-                items: [
-                  const DropdownMenuItem<String?>(
-                    value: 'all',
-                    child: Text('Semua'),
+              Container(
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: DropdownButtonFormField<String?>(
+                  value: _selectedFilter,
+                  isExpanded: true,
+                  decoration: _inputDecoration(
+                    label: 'Pilih Periode',
+                    hint: 'Semua',
                   ),
-                  const DropdownMenuItem<String?>(
-                    value: 'today',
-                    child: Text('Hari Ini'),
-                  ),
-                  ...List.generate(12, (index) {
-                    final month = (index + 1).toString();
-                    return DropdownMenuItem<String>(
-                      value: month,
-                      child: Text(_monthNames[index]),
-                    );
-                  }),
-                ],
-                onChanged: _isLoading ? null : _onFilterChanged,
-                underline: const SizedBox(),
+                  items: [
+                    DropdownMenuItem<String?>(
+                      value: 'all',
+                      child: Text('Semua', style: GoogleFonts.poppins()),
+                    ),
+                    DropdownMenuItem<String?>(
+                      value: 'today',
+                      child: Text('Hari Ini', style: GoogleFonts.poppins()),
+                    ),
+                    ...List.generate(12, (index) {
+                      final month = (index + 1).toString();
+                      return DropdownMenuItem<String>(
+                        value: month,
+                        child: Text(_monthNames[index], style: GoogleFonts.poppins()),
+                      );
+                    }),
+                  ],
+                  onChanged: _isLoading ? null : _onFilterChanged,
+                ),
               ),
             ],
           ),
@@ -248,17 +330,18 @@ class _PerformaPageState extends State<PerformaPage> {
     double maxY = (maxVisitCount / interval).ceil() * interval;
 
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Kunjungan Per Bulan',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               SizedBox(
@@ -273,7 +356,7 @@ class _PerformaPageState extends State<PerformaPage> {
                           BarChartRodData(
                             toY: mv.visitCount.toDouble(),
                             color: primaryColor,
-                            width: 16,
+                            width: 12, // Dikurangi dari 16 untuk lebih banyak ruang
                           ),
                         ],
                       );
@@ -284,15 +367,19 @@ class _PerformaPageState extends State<PerformaPage> {
                           showTitles: true,
                           getTitlesWidget: (double value, TitleMeta meta) {
                             int month = value.toInt();
-                            if (month >= 1 && month <= 12) {
-                              return Text(
-                                _monthNames[month - 1].substring(0, 3),
-                                style: const TextStyle(color: Colors.black, fontSize: 12),
+                            if (month >= 1 && month <= 12) { // Show all months
+                              return RotatedBox(
+                                quarterTurns: 1, // Rotasi 90 derajat untuk kejelasan
+                                child: Text(
+                                  _monthNames[month - 1].substring(0, 3),
+                                  style: GoogleFonts.poppins(fontSize: 12, color: Colors.black),
+                                  textAlign: TextAlign.center,
+                                ),
                               );
                             }
                             return const SizedBox();
                           },
-                          reservedSize: 30,
+                          reservedSize: 40, // Ditambah dari 30 untuk teks yang diputar
                         ),
                       ),
                       leftTitles: AxisTitles(
@@ -304,7 +391,7 @@ class _PerformaPageState extends State<PerformaPage> {
                             if (value % interval == 0) {
                               return Text(
                                 value.toInt().toString(),
-                                style: const TextStyle(color: Colors.black, fontSize: 12),
+                                style: GoogleFonts.poppins(fontSize: 12, color: Colors.black),
                               );
                             }
                             return const SizedBox();

@@ -1,17 +1,17 @@
-// viewform.dart
+// File: lib/viewform.dart
 import 'dart:convert'; // For json operations
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http; // For network requests
 import 'package:intl/intl.dart'; // For date and number formatting
 import 'package:intl/date_symbol_data_local.dart'; // For date locale data
+import 'package:google_fonts/google_fonts.dart'; // For Poppins font
 import 'package:pamasuka/EditFormPage.dart'; // <-- VERIFY PATH
 
 class ViewFormPage extends StatefulWidget {
   final String outletName;
   final int userId;
 
-  const ViewFormPage({Key? key, required this.outletName, required this.userId})
-      : super(key: key);
+  const ViewFormPage({Key? key, required this.outletName, required this.userId}) : super(key: key);
 
   @override
   _ViewFormPageState createState() => _ViewFormPageState();
@@ -24,8 +24,6 @@ class _ViewFormPageState extends State<ViewFormPage> {
   String? _errorMessage;
   final PageController _pageController = PageController();
 
-  final Color startColor = const Color(0xFFFFB6B6);
-  final Color endColor = const Color(0xFFFF8E8E);
   final Color primaryColor = const Color(0xFFC0392B);
 
   final Map<String, String> operatorDisplayMap = {
@@ -102,10 +100,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
               int totalVoucherCount = 0;
               int totalPerdanaCount = 0;
 
-              if (dataHargaString != null &&
-                  dataHargaString.isNotEmpty &&
-                  dataHargaString.trim().toLowerCase() != 'null' &&
-                  dataHargaString.trim() != '[]') {
+              if (dataHargaString != null && dataHargaString.isNotEmpty && dataHargaString.trim().toLowerCase() != 'null' && dataHargaString.trim() != '[]') {
                 try {
                   final List<dynamic> parsedPriceData = json.decode(dataHargaString);
                   if (parsedPriceData is List) {
@@ -116,45 +111,30 @@ class _ViewFormPageState extends State<ViewFormPage> {
 
                     for (var operatorDataRaw in parsedPriceData) {
                       if (operatorDataRaw is Map<String, dynamic>) {
-                        final String? operatorNameFromJsonRaw =
-                            operatorDataRaw['operator']?.toString();
-                        final String operatorNameFromJson =
-                            operatorNameFromJsonRaw?.toUpperCase() ?? '';
-                        final String? packageTypeRaw =
-                            operatorDataRaw['paket']?.toString();
-                        final String packageType =
-                            packageTypeRaw?.toUpperCase() ?? '';
-                        final List<dynamic> entriesRaw =
-                            operatorDataRaw['entries'] ?? [];
+                        final String? operatorNameFromJsonRaw = operatorDataRaw['operator']?.toString();
+                        final String operatorNameFromJson = operatorNameFromJsonRaw?.toUpperCase() ?? '';
+                        final String? packageTypeRaw = operatorDataRaw['paket']?.toString();
+                        final String packageType = packageTypeRaw?.toUpperCase() ?? '';
+                        final List<dynamic> entriesRaw = operatorDataRaw['entries'] ?? [];
 
                         // Map operator name to display name, default to raw name if not in map
-                        final String operatorDisplayName =
-                            operatorDisplayMap[operatorNameFromJson] ??
-                                operatorNameFromJsonRaw ??
-                                'Unknown';
+                        final String operatorDisplayName = operatorDisplayMap[operatorNameFromJson] ?? operatorNameFromJsonRaw ?? 'Unknown';
                         operatorDisplayNames.add(operatorDisplayName);
 
                         // Initialize counts if not already present
-                        voucherCounts[operatorDisplayName] =
-                            voucherCounts[operatorDisplayName] ?? 0;
-                        perdanaCounts[operatorDisplayName] =
-                            perdanaCounts[operatorDisplayName] ?? 0;
+                        voucherCounts[operatorDisplayName] = voucherCounts[operatorDisplayName] ?? 0;
+                        perdanaCounts[operatorDisplayName] = perdanaCounts[operatorDisplayName] ?? 0;
 
                         int currentOperatorPackageTotal = 0;
                         for (var entry in entriesRaw.whereType<Map<String, dynamic>>()) {
-                          currentOperatorPackageTotal +=
-                              int.tryParse(entry['jumlah']?.toString() ?? '0') ?? 0;
+                          currentOperatorPackageTotal += int.tryParse(entry['jumlah']?.toString() ?? '0') ?? 0;
                         }
 
                         if (packageType == 'VOUCHER FISIK') {
-                          voucherCounts[operatorDisplayName] =
-                              (voucherCounts[operatorDisplayName] ?? 0) +
-                                  currentOperatorPackageTotal;
+                          voucherCounts[operatorDisplayName] = (voucherCounts[operatorDisplayName] ?? 0) + currentOperatorPackageTotal;
                           totalVoucherCount += currentOperatorPackageTotal;
                         } else if (packageType == 'PERDANA INTERNET') {
-                          perdanaCounts[operatorDisplayName] =
-                              (perdanaCounts[operatorDisplayName] ?? 0) +
-                                  currentOperatorPackageTotal;
+                          perdanaCounts[operatorDisplayName] = (perdanaCounts[operatorDisplayName] ?? 0) + currentOperatorPackageTotal;
                           totalPerdanaCount += currentOperatorPackageTotal;
                         }
                       }
@@ -162,12 +142,8 @@ class _ViewFormPageState extends State<ViewFormPage> {
 
                     // Calculate percentages for all collected operators
                     for (String opDisplayName in operatorDisplayNames) {
-                      voucherPercentages[opDisplayName] = (totalVoucherCount > 0)
-                          ? (voucherCounts[opDisplayName]! / totalVoucherCount) * 100
-                          : 0.0;
-                      perdanaPercentages[opDisplayName] = (totalPerdanaCount > 0)
-                          ? (perdanaCounts[opDisplayName]! / totalPerdanaCount) * 100
-                          : 0.0;
+                      voucherPercentages[opDisplayName] = (totalVoucherCount > 0) ? (voucherCounts[opDisplayName]! / totalVoucherCount) * 100 : 0.0;
+                      perdanaPercentages[opDisplayName] = (totalPerdanaCount > 0) ? (perdanaCounts[opDisplayName]! / totalPerdanaCount) * 100 : 0.0;
                     }
 
                     print(" -> Calculated V: $voucherPercentages / $totalVoucherCount");
@@ -199,9 +175,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
           });
 
           print("--- Processed ${processedForms.length} forms. Updating state. ---");
-          if (processedForms.isNotEmpty &&
-              _currentIndex >= 0 &&
-              _currentIndex < processedForms.length) {
+          if (processedForms.isNotEmpty && _currentIndex >= 0 && _currentIndex < processedForms.length) {
             final currentFormBeforeSetState = processedForms[_currentIndex];
             print("DEBUG: Form ID ${_currentIndex} (${currentFormBeforeSetState['id']}) CALC DATA before setState:");
             print("  Voucher %: ${currentFormBeforeSetState['calculated_voucher_percentages']}");
@@ -274,7 +248,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
       if (response.statusCode == 200 && data['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(data['message'] ?? 'Data survei berhasil dihapus.'),
+            content: Text(data['message'] ?? 'Data survei berhasil dihapus.', style: GoogleFonts.poppins(color: Colors.white)),
             backgroundColor: Colors.green,
           ),
         );
@@ -287,7 +261,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal menghapus: ${e.toString()}'),
+            content: Text('Gagal menghapus: ${e.toString()}', style: GoogleFonts.poppins(color: Colors.white)),
             backgroundColor: Colors.red,
           ),
         );
@@ -305,23 +279,19 @@ class _ViewFormPageState extends State<ViewFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    print(
-        "--- ViewFormPage BUILD Start (isLoading: $_isLoading, forms: ${_forms.length}, currentIndex: $_currentIndex) ---");
+    print("--- ViewFormPage BUILD Start (isLoading: $_isLoading, forms: ${_forms.length}, currentIndex: $_currentIndex) ---");
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('Riwayat Survei: ${widget.outletName}'),
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 4.0,
+        title: Text('Riwayat Survei: ${widget.outletName}', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        backgroundColor: const Color(0xFFFFF5F5),
+        foregroundColor: primaryColor,
+        elevation: 4,
+        shadowColor: Colors.black26,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [startColor, endColor],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
         child: _buildBody(),
       ),
       floatingActionButton: FloatingActionButton(
@@ -353,7 +323,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
 
   Widget _buildBody() {
     if (_isLoading && _forms.isEmpty) {
-      return const Center(child: CircularProgressIndicator(color: Colors.white));
+      return Center(child: CircularProgressIndicator(color: primaryColor));
     }
 
     if (_errorMessage != null) {
@@ -361,9 +331,8 @@ class _ViewFormPageState extends State<ViewFormPage> {
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Card(
-            color: Colors.white.withOpacity(0.95),
+            elevation: 3,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            elevation: 4,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -371,13 +340,13 @@ class _ViewFormPageState extends State<ViewFormPage> {
                 children: [
                   Icon(
                     Icons.error_outline,
-                    color: Colors.redAccent.shade200,
+                    color: Colors.redAccent,
                     size: 50,
                   ),
                   const SizedBox(height: 15),
                   Text(
                     'Gagal Memuat Data',
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: primaryColor,
@@ -388,18 +357,17 @@ class _ViewFormPageState extends State<ViewFormPage> {
                   Text(
                     _errorMessage!,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.black54, fontSize: 15),
+                    style: GoogleFonts.poppins(color: Colors.grey.shade700, fontSize: 14),
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton.icon(
                     onPressed: _isLoading ? null : () => _fetchForms(),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Coba Lagi'),
+                    icon: const Icon(Icons.refresh, color: Colors.white),
+                    label: Text('Coba Lagi', style: GoogleFonts.poppins(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryColor,
-                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      textStyle: const TextStyle(fontSize: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                 ],
@@ -411,18 +379,18 @@ class _ViewFormPageState extends State<ViewFormPage> {
     }
 
     if (!_isLoading && _forms.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inbox_outlined, size: 60, color: Colors.white70),
-            SizedBox(height: 15),
+            Icon(Icons.inbox_outlined, size: 60, color: Colors.grey.shade600),
+            const SizedBox(height: 15),
             Text(
               'Tidak ada data survei ditemukan\nuntuk outlet ini.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.white,
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                color: Colors.grey.shade700,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -437,7 +405,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           child: Card(
             elevation: 3,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
               child: Row(
@@ -450,24 +418,25 @@ class _ViewFormPageState extends State<ViewFormPage> {
                     splashRadius: 20,
                     onPressed: (_currentIndex > 0 && !_isLoading)
                         ? () => _pageController.previousPage(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOut)
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeOut,
+                            )
                         : null,
                   ),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (_isLoading && _forms.isNotEmpty)
-                        const SizedBox(
+                        SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(color: primaryColor, strokeWidth: 2),
                         ),
                       if (_isLoading && _forms.isNotEmpty) const SizedBox(width: 8),
                       Text(
                         'Survei ke-${_currentIndex + 1} dari ${_forms.length}',
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: Colors.black87,
                         ),
@@ -476,15 +445,14 @@ class _ViewFormPageState extends State<ViewFormPage> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.arrow_forward_ios),
-                    color: _currentIndex < _forms.length - 1
-                        ? primaryColor
-                        : Colors.grey.shade400,
+                    color: _currentIndex < _forms.length - 1 ? primaryColor : Colors.grey.shade400,
                     tooltip: 'Form Berikutnya',
                     splashRadius: 20,
                     onPressed: (_currentIndex < _forms.length - 1 && !_isLoading)
                         ? () => _pageController.nextPage(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOut)
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeOut,
+                            )
                         : null,
                   ),
                 ],
@@ -504,7 +472,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
             itemBuilder: (context, index) {
               print("--- PageView itemBuilder START for index: $index ---");
               if (index < 0 || index >= _forms.length) {
-                return const Center(child: Text("Error: Index Invalid"));
+                return Center(child: Text("Error: Index Invalid", style: GoogleFonts.poppins()));
               }
               final form = _forms[index];
               final formId = form['id'] ?? 'invalid_id_${DateTime.now().millisecondsSinceEpoch}';
@@ -544,8 +512,8 @@ class _ViewFormPageState extends State<ViewFormPage> {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
       child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        elevation: 5,
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -561,8 +529,8 @@ class _ViewFormPageState extends State<ViewFormPage> {
                       children: [
                         Text(
                           formattedDate,
-                          style: TextStyle(
-                            fontSize: 17,
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: primaryColor,
                           ),
@@ -572,9 +540,9 @@ class _ViewFormPageState extends State<ViewFormPage> {
                         Chip(
                           label: Text(
                             form['jenis_survei'] ?? '?',
-                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                            style: GoogleFonts.poppins(color: Colors.white, fontSize: 12),
                           ),
-                          backgroundColor: primaryColor.withOpacity(0.9),
+                          backgroundColor: primaryColor,
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           visualDensity: VisualDensity.compact,
                         ),
@@ -593,7 +561,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
                             : () {
                                 if (surveyId == null) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text("ID Survei tidak valid.")),
+                                    SnackBar(content: Text("ID Survei tidak valid.", style: GoogleFonts.poppins(color: Colors.white)), backgroundColor: Colors.red),
                                   );
                                   return;
                                 }
@@ -612,8 +580,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
                                     print("Returned TRUE from EditFormPage. Refreshing...");
                                     _fetchForms();
                                   } else {
-                                    print(
-                                        "Returned from EditFormPage without saving (result: $result).");
+                                    print("Returned from EditFormPage without saving (result: $result).");
                                   }
                                 });
                               },
@@ -627,32 +594,26 @@ class _ViewFormPageState extends State<ViewFormPage> {
                             : () async {
                                 if (surveyId == null) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text("ID Survei tidak valid.")),
+                                    SnackBar(content: Text("ID Survei tidak valid.", style: GoogleFonts.poppins(color: Colors.white)), backgroundColor: Colors.red),
                                   );
                                   return;
                                 }
                                 final bool? confirm = await showDialog<bool>(
                                   context: context,
                                   builder: (BuildContext dialogContext) => AlertDialog(
-                                    title: const Text('Konfirmasi Hapus'),
-                                    content: const Text(
-                                        'Yakin hapus data survei ini? Tindakan ini tidak dapat dibatalkan.'),
+                                    title: Text('Konfirmasi Hapus', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+                                    content: Text('Yakin hapus data survei ini? Tindakan ini tidak dapat dibatalkan.', style: GoogleFonts.poppins()),
                                     actions: [
                                       TextButton(
                                         onPressed: () => Navigator.pop(dialogContext, false),
-                                        child: const Text('Batal'),
+                                        child: Text('Batal', style: GoogleFonts.poppins(color: primaryColor)),
                                       ),
                                       TextButton(
                                         onPressed: () => Navigator.pop(dialogContext, true),
-                                        child: Text(
-                                          'Hapus',
-                                          style: TextStyle(color: Colors.red.shade600),
-                                        ),
+                                        child: Text('Hapus', style: GoogleFonts.poppins(color: Colors.red.shade600)),
                                       ),
                                     ],
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(15.0),
-                                    ),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   ),
                                 );
                                 if (confirm == true) {
@@ -665,13 +626,11 @@ class _ViewFormPageState extends State<ViewFormPage> {
                   ),
                 ],
               ),
-              const Divider(height: 25, thickness: 1),
+              Divider(color: Colors.grey.shade300, height: 25),
               _buildDetailItem(
                 Icons.notes_rounded,
                 'Keterangan Kunjungan:',
-                form['keterangan_kunjungan']?.toString().trim().isNotEmpty == true
-                    ? form['keterangan_kunjungan'].toString()
-                    : 'Tidak ada keterangan',
+                form['keterangan_kunjungan']?.toString().trim().isNotEmpty == true ? form['keterangan_kunjungan'].toString() : 'Tidak ada keterangan',
               ),
               const SizedBox(height: 20),
               if (form['jenis_survei'] == 'Survei branding') ...[
@@ -695,7 +654,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: primaryColor.withOpacity(0.8), size: 22),
+          Icon(icon, color: primaryColor, size: 22),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -703,18 +662,18 @@ class _ViewFormPageState extends State<ViewFormPage> {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: GoogleFonts.poppins(
                     fontWeight: FontWeight.w600,
-                    fontSize: 15,
+                    fontSize: 14,
                     color: Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 5),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: Colors.black54,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey.shade700,
                     height: 1.3,
                   ),
                 ),
@@ -733,7 +692,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: GoogleFonts.poppins(
             fontWeight: FontWeight.bold,
             fontSize: 16,
             color: Colors.black87,
@@ -746,7 +705,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(12),
-            color: Colors.grey[100],
+            color: Colors.grey.shade50,
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(11.5),
@@ -754,21 +713,17 @@ class _ViewFormPageState extends State<ViewFormPage> {
                 ? Image.network(
                     url!,
                     fit: BoxFit.contain,
-                    loadingBuilder: (context, child, loadingProgress) =>
-                        loadingProgress == null
-                            ? child
-                            : Center(
-                                child: CircularProgressIndicator(
-                                  value: loadingProgress.expectedTotalBytes != null
-                                      ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                      : null,
-                                  color: primaryColor,
-                                ),
-                              ),
+                    loadingBuilder: (context, child, loadingProgress) => loadingProgress == null
+                        ? child
+                        : Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes! : null,
+                              color: primaryColor,
+                            ),
+                          ),
                     errorBuilder: (context, error, stackTrace) {
                       print('Error loading image $url: $error');
-                      return const Center(
+                      return Center(
                         child: Icon(
                           Icons.broken_image_outlined,
                           color: Colors.redAccent,
@@ -777,10 +732,10 @@ class _ViewFormPageState extends State<ViewFormPage> {
                       );
                     },
                   )
-                : const Center(
+                : Center(
                     child: Icon(
                       Icons.image_not_supported_outlined,
-                      color: Colors.grey,
+                      color: Colors.grey.shade600,
                       size: 45,
                     ),
                   ),
@@ -794,10 +749,8 @@ class _ViewFormPageState extends State<ViewFormPage> {
     final formIdForLog = form['id'] ?? 'UNKNOWN';
     print("--- _buildPriceDataSection START for ID: $formIdForLog ---");
 
-    final Map<String, double> voucherPercentages =
-        Map<String, double>.from(form['calculated_voucher_percentages'] ?? {});
-    final Map<String, double> perdanaPercentages =
-        Map<String, double>.from(form['calculated_perdana_percentages'] ?? {});
+    final Map<String, double> voucherPercentages = Map<String, double>.from(form['calculated_voucher_percentages'] ?? {});
+    final Map<String, double> perdanaPercentages = Map<String, double>.from(form['calculated_perdana_percentages'] ?? {});
     final int totalVoucherCount = form['calculated_total_voucher_count'] ?? 0;
     final int totalPerdanaCount = form['calculated_total_perdana_count'] ?? 0;
 
@@ -807,10 +760,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
     final String? dataHargaString = form['data_harga']?.toString();
     List<dynamic> parsedPriceDataForDetails = [];
     bool detailDecodeError = false;
-    if (dataHargaString != null &&
-        dataHargaString.isNotEmpty &&
-        dataHargaString.trim().toLowerCase() != 'null' &&
-        dataHargaString.trim() != '[]') {
+    if (dataHargaString != null && dataHargaString.isNotEmpty && dataHargaString.trim().toLowerCase() != 'null' && dataHargaString.trim() != '[]') {
       try {
         final decoded = json.decode(dataHargaString);
         if (decoded is List) {
@@ -831,9 +781,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
       if (operatorDataRaw is Map<String, dynamic>) {
         final String? operatorNameFromJsonRaw = operatorDataRaw['operator']?.toString();
         final String operatorNameFromJson = operatorNameFromJsonRaw?.toUpperCase() ?? '';
-        final String operatorDisplayName = operatorDisplayMap[operatorNameFromJson] ??
-            operatorNameFromJsonRaw ??
-            'Unknown';
+        final String operatorDisplayName = operatorDisplayMap[operatorNameFromJson] ?? operatorNameFromJsonRaw ?? 'Unknown';
         operatorDisplayNames.add(operatorDisplayName);
       }
     }
@@ -841,9 +789,9 @@ class _ViewFormPageState extends State<ViewFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Ringkasan Persentase Jumlah Unit',
-          style: TextStyle(
+          style: GoogleFonts.poppins(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: Colors.black87,
@@ -864,7 +812,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
           operatorDisplayNames.toList(),
         ),
         const SizedBox(height: 25),
-        const Divider(thickness: 1),
+        Divider(color: Colors.grey.shade300),
         const SizedBox(height: 15),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 6.0),
@@ -873,15 +821,15 @@ class _ViewFormPageState extends State<ViewFormPage> {
             children: [
               Icon(
                 Icons.receipt_long_outlined,
-                color: primaryColor.withOpacity(0.8),
+                color: primaryColor,
                 size: 22,
               ),
               const SizedBox(width: 12),
-              const Text(
+              Text(
                 'Rincian Data Harga:',
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   fontWeight: FontWeight.w600,
-                  fontSize: 15,
+                  fontSize: 14,
                   color: Colors.black87,
                 ),
               ),
@@ -890,24 +838,26 @@ class _ViewFormPageState extends State<ViewFormPage> {
         ),
         const SizedBox(height: 12),
         if (detailDecodeError)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10.0),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10.0),
             child: Text(
               'Gagal menampilkan rincian harga (format data salah).',
-              style: TextStyle(
-                color: Colors.red,
+              style: GoogleFonts.poppins(
+                color: Colors.redAccent,
                 fontStyle: FontStyle.italic,
+                fontSize: 12,
               ),
             ),
           )
         else if (parsedPriceDataForDetails.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10.0),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10.0),
             child: Text(
               'Tidak ada data harga rinci untuk ditampilkan.',
-              style: TextStyle(
+              style: GoogleFonts.poppins(
                 fontStyle: FontStyle.italic,
-                color: Colors.grey,
+                color: Colors.grey.shade600,
+                fontSize: 12,
               ),
             ),
           )
@@ -917,21 +867,13 @@ class _ViewFormPageState extends State<ViewFormPage> {
             final Map<String, dynamic> operatorData = operatorDataRaw;
             final String? operatorNameFromJsonRaw = operatorData['operator']?.toString();
             final String operatorNameFromJson = operatorNameFromJsonRaw?.toUpperCase() ?? '';
-            final String operatorDisplayName = operatorDisplayMap[operatorNameFromJson] ??
-                operatorNameFromJsonRaw ??
-                '?';
+            final String operatorDisplayName = operatorDisplayMap[operatorNameFromJson] ?? operatorNameFromJsonRaw ?? '?';
             final String packageType = operatorData['paket']?.toString() ?? '?';
-            final List<Map<String, dynamic>> entries =
-                (operatorData['entries'] as List? ?? [])
-                    .whereType<Map<String, dynamic>>()
-                    .toList();
+            final List<Map<String, dynamic>> entries = (operatorData['entries'] as List? ?? []).whereType<Map<String, dynamic>>().toList();
             return Card(
               elevation: 2,
               margin: const EdgeInsets.only(bottom: 14.0, left: 4, right: 4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-                side: BorderSide(color: Colors.grey.shade200, width: 0.5),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
                 padding: const EdgeInsets.all(14.0),
                 child: Column(
@@ -939,32 +881,32 @@ class _ViewFormPageState extends State<ViewFormPage> {
                   children: [
                     Text(
                       operatorDisplayName,
-                      style: const TextStyle(
+                      style: GoogleFonts.poppins(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color: Colors.black,
+                        color: Colors.black87,
                       ),
                     ),
                     Text(
                       'Jenis Paket: $packageType',
-                      style: TextStyle(
+                      style: GoogleFonts.poppins(
                         color: Colors.grey.shade700,
-                        fontSize: 13,
+                        fontSize: 12,
                       ),
                     ),
                     Divider(
                       height: 18,
-                      thickness: 0.8,
-                      color: Colors.grey[200],
+                      color: Colors.grey.shade300,
                     ),
                     if (entries.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.only(left: 8.0, top: 6.0),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8.0, top: 6.0),
                         child: Text(
                           'Tidak ada rincian harga.',
-                          style: TextStyle(
+                          style: GoogleFonts.poppins(
                             fontStyle: FontStyle.italic,
-                            color: Colors.grey,
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
                           ),
                         ),
                       )
@@ -1000,20 +942,20 @@ class _ViewFormPageState extends State<ViewFormPage> {
                               children: [
                                 Row(
                                   children: [
-                                    const Padding(
-                                      padding: EdgeInsets.only(top: 4.0, right: 6.0),
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4.0, right: 6.0),
                                       child: Icon(
                                         Icons.fiber_manual_record,
                                         size: 8,
-                                        color: Colors.black54,
+                                        color: Colors.grey.shade600,
                                       ),
                                     ),
                                     Expanded(
                                       child: Text(
                                         packageName,
-                                        style: const TextStyle(
+                                        style: GoogleFonts.poppins(
                                           fontWeight: FontWeight.w500,
-                                          fontSize: 14.5,
+                                          fontSize: 14,
                                         ),
                                       ),
                                     ),
@@ -1023,8 +965,8 @@ class _ViewFormPageState extends State<ViewFormPage> {
                                   padding: const EdgeInsets.only(left: 18.0, top: 4.0),
                                   child: Text(
                                     'Harga: $displayPrice',
-                                    style: const TextStyle(
-                                      color: Colors.black54,
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.grey.shade700,
                                       fontSize: 14,
                                     ),
                                   ),
@@ -1033,8 +975,8 @@ class _ViewFormPageState extends State<ViewFormPage> {
                                   padding: const EdgeInsets.only(left: 18.0, top: 2.0),
                                   child: Text(
                                     'Jumlah: $amountRaw',
-                                    style: const TextStyle(
-                                      color: Colors.black54,
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.grey.shade700,
                                       fontSize: 14,
                                     ),
                                   ),
@@ -1060,12 +1002,9 @@ class _ViewFormPageState extends State<ViewFormPage> {
     List<String> operatorDisplayNames,
   ) {
     return Card(
-      elevation: 1.5,
+      elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 5.0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: Colors.grey.shade300, width: 0.5),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
@@ -1073,15 +1012,15 @@ class _ViewFormPageState extends State<ViewFormPage> {
           children: [
             Text(
               title,
-              style: const TextStyle(
+              style: GoogleFonts.poppins(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: Colors.black,
+                color: Colors.black87,
               ),
             ),
             Text(
               'Total Unit: $totalCount',
-              style: TextStyle(
+              style: GoogleFonts.poppins(
                 fontSize: 12,
                 color: Colors.grey.shade600,
               ),
@@ -1093,11 +1032,12 @@ class _ViewFormPageState extends State<ViewFormPage> {
               headingRowHeight: 35,
               dataRowMinHeight: 30,
               dataRowMaxHeight: 40,
-              headingTextStyle: TextStyle(
+              headingTextStyle: GoogleFonts.poppins(
                 fontWeight: FontWeight.bold,
                 color: primaryColor,
                 fontSize: 14,
               ),
+              dataTextStyle: GoogleFonts.poppins(fontSize: 13.5),
               columns: const [
                 DataColumn(label: Text('Operator')),
                 DataColumn(label: Text('Persen'), numeric: true),
@@ -1106,17 +1046,11 @@ class _ViewFormPageState extends State<ViewFormPage> {
                 final double percentage = percentages[opDisplayName] ?? 0.0;
                 return DataRow(
                   cells: [
-                    DataCell(
-                      Text(
-                        opDisplayName,
-                        style: const TextStyle(fontSize: 13.5),
-                      ),
-                    ),
+                    DataCell(Text(opDisplayName)),
                     DataCell(
                       Text(
                         '${percentage.toStringAsFixed(1)}%',
                         textAlign: TextAlign.right,
-                        style: const TextStyle(fontSize: 13.5),
                       ),
                     ),
                   ],
@@ -1129,10 +1063,10 @@ class _ViewFormPageState extends State<ViewFormPage> {
                 child: Center(
                   child: Text(
                     'Tidak ada data unit untuk jenis paket ini.',
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       fontStyle: FontStyle.italic,
                       color: Colors.grey.shade700,
-                      fontSize: 13,
+                      fontSize: 12,
                     ),
                   ),
                 ),
