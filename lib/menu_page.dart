@@ -227,7 +227,7 @@ class _MenuPageState extends State<MenuPage> with RouteAware {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
-              'Status Performa Telkomsel',
+              'Status Display Shared',
               style: GoogleFonts.poppins(
                 fontSize: 16,
                 color: Colors.grey.shade800,
