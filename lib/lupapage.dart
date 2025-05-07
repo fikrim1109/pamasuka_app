@@ -1,15 +1,14 @@
 // File: lib/lupapage.dart
-import 'dart:convert';
-import 'dart:async'; // For Timer/TimeoutException
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:google_fonts/google_fonts.dart'; // For Poppins font
-import 'package:pamasuka/login_page.dart'; // For navigation back to login
+import "dart:convert";
+import "dart:async"; // For Timer/TimeoutException
+import "package:flutter/material.dart";
+import "package:http/http.dart" as http;
+// import "package:google_fonts/google_fonts.dart"; // Replaced by Theme
+import "package:pamasuka/login_page.dart"; // For navigation back to login
+import "package:pamasuka/app_theme.dart"; // Import AppTheme
 
-// Use the same base URL as defined elsewhere
-const String _apiBaseUrl = 'https://tunnel.jato.my.id/test%20api';
+const String _apiBaseUrl = "https://tunnel.jato.my.id/test%20api";
 
-// Enum to manage the current step in the forgot password flow
 enum ForgotPasswordStep { enterUsername, answerQuestion, resetPassword }
 
 class LupaPasswordPage extends StatefulWidget {
@@ -20,26 +19,22 @@ class LupaPasswordPage extends StatefulWidget {
 }
 
 class _LupaPasswordPageState extends State<LupaPasswordPage> {
-  // --- Controllers ---
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _securityAnswerController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
-  // --- State Variables ---
   ForgotPasswordStep _currentStep = ForgotPasswordStep.enterUsername;
-  String _username = ''; // Store username after step 1 verification
-  String _securityQuestion = ''; // Store fetched question
-  bool _isLoading = false; // General loading indicator for the current step's action
-  String _errorMessage = ''; // To display errors specific to the current step
+  String _username = "";
+  String _securityQuestion = "";
+  bool _isLoading = false;
+  String _errorMessage = "";
 
-  // Form Keys for each step to manage validation independently
   final GlobalKey<FormState> _usernameFormKey = GlobalKey<FormState>();
   final GlobalKey<FormState> _answerFormKey = GlobalKey<FormState>();
   final GlobalKey<FormState> _resetPasswordFormKey = GlobalKey<FormState>();
 
-  // Theme Colors
-  final Color primaryColor = const Color(0xFFC0392B);
+  // Removed: final Color primaryColor = const Color(0xFFC0392B);
 
   @override
   void dispose() {
@@ -50,78 +45,66 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
     super.dispose();
   }
 
-  // --- Helper: Show Snackbar ---
-  void _showSnackBar(String message, {bool isError = false}) {
+  void _showSnackBar(BuildContext context, String message, {bool isError = false}) {
     if (!mounted) return;
+    final ThemeData theme = Theme.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: GoogleFonts.poppins(color: Colors.white, fontSize: 14)),
-        backgroundColor: isError ? Colors.red : Colors.green,
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: isError ? 4 : 3),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        margin: const EdgeInsets.all(10),
+        content: Text(message, style: theme.snackBarTheme.contentTextStyle ?? TextStyle(color: isError ? theme.colorScheme.onError : theme.colorScheme.onInverseSurface)),
+        backgroundColor: isError ? AppSemanticColors.danger(context) : AppSemanticColors.success(context),
       ),
     );
   }
 
-  // --- API Helper: Generic Request Handling ---
   Future<Map<String, dynamic>?> _makeApiRequest({
     required String endpoint,
     required Map<String, dynamic> body,
-    required String loadingMessage,
     required String errorMessagePrefix,
-    String method = 'POST', // Default to POST, allow GET
+    String method = "POST",
   }) async {
     if (!mounted) return null;
     setState(() {
       _isLoading = true;
-      _errorMessage = ''; // Clear previous step error
+      _errorMessage = "";
     });
 
-    final url = Uri.parse('$_apiBaseUrl/$endpoint');
+    final url = Uri.parse("$_apiBaseUrl/$endpoint");
     http.Response response;
 
     try {
-      if (method.toUpperCase() == 'GET') {
-        // For GET, append parameters to URL
+      if (method.toUpperCase() == "GET") {
         final queryString = Uri(queryParameters: body.map((key, value) => MapEntry(key, value.toString()))).query;
-        final fullUrl = Uri.parse('$url?$queryString');
+        final fullUrl = Uri.parse("$url?$queryString");
         response = await http.get(fullUrl).timeout(const Duration(seconds: 15));
-      } else { // POST
+      } else {
         response = await http.post(
           url,
-          headers: {'Content-Type': 'application/json'},
+          headers: {"Content-Type": "application/json"},
           body: json.encode(body),
         ).timeout(const Duration(seconds: 15));
       }
 
       if (!mounted) return null;
-
       final data = json.decode(response.body);
 
-      if (response.statusCode == 200 && data is Map<String, dynamic> && data['success'] == true) {
-        return data; // Return successful data
+      if (response.statusCode == 200 && data is Map<String, dynamic> && data["success"] == true) {
+        return data;
       } else {
-        // Handle API errors (success: false or non-200 status)
-        final String message = data is Map<String, dynamic> ? (data['message'] ?? 'Unknown API error.') : 'Invalid response structure.';
-        setState(() { _errorMessage = '$errorMessagePrefix: $message'; });
-        return null; // Indicate failure
+        final String message = data is Map<String, dynamic> ? (data["message"] ?? "Unknown API error.") : "Invalid response structure.";
+        setState(() { _errorMessage = "$errorMessagePrefix: $message"; });
+        return null;
       }
     } on TimeoutException {
-      setState(() { _errorMessage = '$errorMessagePrefix: Connection timed out.'; });
+      setState(() { _errorMessage = "$errorMessagePrefix: Connection timed out."; });
       return null;
-    } on FormatException catch (e) {
-      setState(() { _errorMessage = '$errorMessagePrefix: Invalid server response format.'; });
-      print("API FormatException ($endpoint): $e");
+    } on FormatException {
+      setState(() { _errorMessage = "$errorMessagePrefix: Invalid server response format."; });
       return null;
     } on http.ClientException catch (e) {
-      setState(() { _errorMessage = '$errorMessagePrefix: Network error: ${e.message}'; });
-      print("API ClientException ($endpoint): $e");
+      setState(() { _errorMessage = "$errorMessagePrefix: Network error: ${e.message}"; });
       return null;
     } catch (e) {
-      setState(() { _errorMessage = '$errorMessagePrefix: An unexpected error occurred.'; });
-      print("API General Exception ($endpoint): $e");
+      setState(() { _errorMessage = "$errorMessagePrefix: An unexpected error occurred."; });
       return null;
     } finally {
       if (mounted) {
@@ -130,253 +113,176 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
     }
   }
 
-  // --- Step 1: Fetch Security Question ---
   Future<void> _fetchSecurityQuestion() async {
-    // Validate the specific form for this step
     if (!_usernameFormKey.currentState!.validate()) return;
-
     final String currentUsername = _usernameController.text.trim();
     final data = await _makeApiRequest(
-      endpoint: 'getsecurityquestion.php',
-      method: 'GET',
-      body: {'username': currentUsername},
-      loadingMessage: 'Fetching question...',
-      errorMessagePrefix: 'Failed to fetch question',
+      endpoint: "getsecurityquestion.php",
+      method: "GET",
+      body: {"username": currentUsername},
+      errorMessagePrefix: "Gagal mengambil pertanyaan",
     );
-
-    if (data != null && data['question'] != null) {
-      // Success: Update state and move to next step
+    if (data != null && data["question"] != null) {
       if (mounted) {
         setState(() {
-          _username = currentUsername; // Store username only on success
-          _securityQuestion = data['question'];
+          _username = currentUsername;
+          _securityQuestion = data["question"];
           _currentStep = ForgotPasswordStep.answerQuestion;
-          _securityAnswerController.clear(); // Clear answer field for new step
+          _securityAnswerController.clear();
         });
       }
     }
-    // Error message is handled within _makeApiRequest
   }
 
-  // --- Step 2: Verify Security Answer ---
   Future<void> _verifySecurityAnswer() async {
-    // Validate the specific form for this step
     if (!_answerFormKey.currentState!.validate()) return;
-
     final data = await _makeApiRequest(
-      endpoint: 'verifysecurityanswer.php',
-      body: {
-        'username': _username, // Use stored username
-        'answer': _securityAnswerController.text.trim(),
-      },
-      loadingMessage: 'Verifying answer...',
-      errorMessagePrefix: 'Failed to verify answer',
+      endpoint: "verifysecurityanswer.php",
+      body: {"username": _username, "answer": _securityAnswerController.text.trim()},
+      errorMessagePrefix: "Gagal verifikasi jawaban",
     );
-
-    if (data != null && data['correct'] == true) {
-      // Success: Move to reset password step
+    if (data != null && data["correct"] == true) {
       if (mounted) {
         setState(() {
           _currentStep = ForgotPasswordStep.resetPassword;
-          _newPasswordController.clear(); // Clear password fields for new step
+          _newPasswordController.clear();
           _confirmPasswordController.clear();
         });
       }
-    } else if (data != null && data['correct'] == false) {
-      // API indicates answer was incorrect, keep user on this step
+    } else if (data != null && data["correct"] == false) {
       if (mounted) {
-        setState(() {
-          _errorMessage = data['message'] ?? 'Jawaban keamanan salah.';
-        });
+        setState(() { _errorMessage = data["message"] ?? "Jawaban keamanan salah."; });
       }
     }
-    // Other errors handled by _makeApiRequest
   }
 
-  // --- Step 3: Reset Password ---
   Future<void> _resetPassword() async {
-    // Validate the specific form for this step
     if (!_resetPasswordFormKey.currentState!.validate()) return;
-
     final data = await _makeApiRequest(
-      endpoint: 'resetpassword.php',
-      body: {
-        'username': _username, // Use stored username
-        'newPassword': _newPasswordController.text,
-      },
-      loadingMessage: 'Resetting password...',
-      errorMessagePrefix: 'Failed to reset password',
+      endpoint: "resetpassword.php",
+      body: {"username": _username, "newPassword": _newPasswordController.text},
+      errorMessagePrefix: "Gagal reset kata sandi",
     );
-
     if (data != null) {
-      // Success: Show success message and navigate back to login
-      _showSnackBar(data['message'] ?? 'Kata sandi berhasil direset.');
+      _showSnackBar(context, data["message"] ?? "Kata sandi berhasil direset.");
       if (mounted) {
-        // Use pushAndRemoveUntil to clear stack and go to login
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const LoginPage()),
-          (Route<dynamic> route) => false, // Remove all previous routes
+          (Route<dynamic> route) => false,
         );
       }
     }
-    // Errors handled by _makeApiRequest
   }
 
-  // --- Build UI based on current step ---
-  Widget _buildCurrentStepWidget() {
-    // Key is essential for AnimatedSwitcher to detect changes correctly
+  Widget _buildCurrentStepWidget(ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
     Widget stepWidget;
     switch (_currentStep) {
       case ForgotPasswordStep.enterUsername:
-        stepWidget = _buildUsernameStep();
+        stepWidget = _buildUsernameStep(theme, colorScheme, textTheme);
         break;
       case ForgotPasswordStep.answerQuestion:
-        stepWidget = _buildAnswerStep();
+        stepWidget = _buildAnswerStep(theme, colorScheme, textTheme);
         break;
       case ForgotPasswordStep.resetPassword:
-        stepWidget = _buildResetPasswordStep();
+        stepWidget = _buildResetPasswordStep(theme, colorScheme, textTheme);
         break;
     }
-    return Container(
-      key: ValueKey<ForgotPasswordStep>(_currentStep),
-      child: stepWidget,
+    return AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        transitionBuilder: (Widget child, Animation<double> animation) {
+            return FadeTransition(opacity: animation, child: child);
+        },
+        child: Container(key: ValueKey<ForgotPasswordStep>(_currentStep), child: stepWidget),
     );
   }
 
-  // --- UI for Step 1: Enter Username ---
-  Widget _buildUsernameStep() {
+  Widget _buildUsernameStep(ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
     return Form(
       key: _usernameFormKey,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Masukkan Nama Pengguna Anda',
-            style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-            textAlign: TextAlign.center,
-          ),
+          Text("Masukkan Nama Pengguna Anda", style: textTheme.titleLarge, textAlign: TextAlign.center),
           const SizedBox(height: 25),
           TextFormField(
             controller: _usernameController,
-            decoration: _inputDecoration('Nama Pengguna', Icons.person_search_outlined),
+            decoration: InputDecoration(labelText: "Nama Pengguna", prefixIcon: Icon(Icons.person_search_outlined, color: colorScheme.primary)),
             keyboardType: TextInputType.text,
             textInputAction: TextInputAction.done,
             enabled: !_isLoading,
             autofocus: true,
+            style: textTheme.bodyLarge,
             onFieldSubmitted: (_) => _isLoading ? null : _fetchSecurityQuestion(),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Nama pengguna tidak boleh kosong';
-              }
-              return null;
-            },
-            style: GoogleFonts.poppins(color: Colors.black87),
+            validator: (value) => (value == null || value.trim().isEmpty) ? "Nama pengguna tidak boleh kosong" : null,
           ),
           const SizedBox(height: 20),
-          // Show step-specific error message if any
           if (_errorMessage.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 15.0),
-              child: Text(
-                _errorMessage,
-                style: GoogleFonts.poppins(color: Colors.redAccent, fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
+              child: Text(_errorMessage, style: textTheme.bodySmall?.copyWith(color: AppSemanticColors.danger(context)), textAlign: TextAlign.center),
             ),
           ElevatedButton(
             onPressed: _isLoading ? null : _fetchSecurityQuestion,
-            style: _buttonStyle(),
-            child: _isLoading
-                ? _loadingIndicator()
-                : Text('Lanjut', style: GoogleFonts.poppins(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold)),
+            child: _isLoading ? _loadingIndicator(colorScheme) : Text("Lanjut", style: TextStyle(color: colorScheme.onPrimary)),
           ),
         ],
       ),
     );
   }
 
-  // --- UI for Step 2: Answer Security Question ---
-  Widget _buildAnswerStep() {
+  Widget _buildAnswerStep(ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
     return Form(
       key: _answerFormKey,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Jawab Pertanyaan Keamanan Berikut',
-            style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-            textAlign: TextAlign.center,
-          ),
+          Text("Jawab Pertanyaan Keamanan Berikut", style: textTheme.titleLarge, textAlign: TextAlign.center),
           const SizedBox(height: 20),
-          // Display the security question
           Container(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
             width: double.infinity,
             decoration: BoxDecoration(
-              color: Colors.grey.shade200,
+              color: colorScheme.surfaceVariant,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade300),
+              border: Border.all(color: colorScheme.outline),
             ),
-            child: Text(
-              _securityQuestion,
-              style: GoogleFonts.poppins(fontSize: 14, color: Colors.black87),
-              textAlign: TextAlign.center,
-            ),
+            child: Text(_securityQuestion, style: textTheme.bodyLarge, textAlign: TextAlign.center),
           ),
           const SizedBox(height: 25),
           TextFormField(
             controller: _securityAnswerController,
-            decoration: _inputDecoration('Jawaban Anda', Icons.question_answer_outlined),
+            decoration: InputDecoration(labelText: "Jawaban Anda", prefixIcon: Icon(Icons.question_answer_outlined, color: colorScheme.primary)),
             keyboardType: TextInputType.text,
             textInputAction: TextInputAction.done,
             enabled: !_isLoading,
             autofocus: true,
+            style: textTheme.bodyLarge,
             onFieldSubmitted: (_) => _isLoading ? null : _verifySecurityAnswer(),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Jawaban tidak boleh kosong';
-              }
-              return null;
-            },
-            style: GoogleFonts.poppins(color: Colors.black87),
+            validator: (value) => (value == null || value.trim().isEmpty) ? "Jawaban tidak boleh kosong" : null,
           ),
           const SizedBox(height: 20),
           if (_errorMessage.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 15.0),
-              child: Text(
-                _errorMessage,
-                style: GoogleFonts.poppins(color: Colors.redAccent, fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
+              child: Text(_errorMessage, style: textTheme.bodySmall?.copyWith(color: AppSemanticColors.danger(context)), textAlign: TextAlign.center),
             ),
           ElevatedButton(
             onPressed: _isLoading ? null : _verifySecurityAnswer,
-            style: _buttonStyle(),
-            child: _isLoading
-                ? _loadingIndicator()
-                : Text('Verifikasi Jawaban', style: GoogleFonts.poppins(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold)),
+            child: _isLoading ? _loadingIndicator(colorScheme) : Text("Verifikasi Jawaban", style: TextStyle(color: colorScheme.onPrimary)),
           ),
           const SizedBox(height: 10),
-          // Option to go back
           Center(
             child: TextButton(
-              onPressed: _isLoading
-                  ? null
-                  : () {
-                      setState(() {
-                        _currentStep = ForgotPasswordStep.enterUsername;
-                        _errorMessage = ''; // Clear error for the new step
-                        _securityAnswerController.clear(); // Clear field from this step
-                        // Keep username field populated
-                      });
-                    },
-              child: Text(
-                '<< Kembali ke Nama Pengguna',
-                style: GoogleFonts.poppins(color: primaryColor, fontSize: 12),
-              ),
+              onPressed: _isLoading ? null : () {
+                setState(() {
+                  _currentStep = ForgotPasswordStep.enterUsername;
+                  _errorMessage = "";
+                  _securityAnswerController.clear();
+                });
+              },
+              child: Text("<< Kembali ke Nama Pengguna", style: textTheme.labelLarge?.copyWith(color: colorScheme.primary)),
             ),
           ),
         ],
@@ -384,91 +290,78 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
     );
   }
 
-  // --- UI for Step 3: Reset Password ---
-  Widget _buildResetPasswordStep() {
+  Widget _buildResetPasswordStep(ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
     return Form(
       key: _resetPasswordFormKey,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Masukkan Kata Sandi Baru Anda',
-            style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-            textAlign: TextAlign.center,
-          ),
+          Text("Masukkan Kata Sandi Baru Anda", style: textTheme.titleLarge, textAlign: TextAlign.center),
           const SizedBox(height: 25),
           TextFormField(
             controller: _newPasswordController,
             obscureText: true,
-            decoration: _inputDecoration('Kata Sandi Baru', Icons.lock_person_outlined),
+            decoration: InputDecoration(labelText: "Kata Sandi Baru", prefixIcon: Icon(Icons.lock_person_outlined, color: colorScheme.primary)),
             textInputAction: TextInputAction.next,
             enabled: !_isLoading,
             autofocus: true,
+            style: textTheme.bodyLarge,
             validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Kata sandi baru tidak boleh kosong';
-              }
-              if (value.length < 6) {
-                return 'Kata sandi minimal 6 karakter';
-              }
+              if (value == null || value.isEmpty) return "Kata sandi baru tidak boleh kosong";
+              if (value.length < 6) return "Kata sandi minimal 6 karakter";
               return null;
             },
-            style: GoogleFonts.poppins(color: Colors.black87),
           ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _confirmPasswordController,
             obscureText: true,
-            decoration: _inputDecoration('Konfirmasi Kata Sandi Baru', Icons.lock_outline),
+            decoration: InputDecoration(labelText: "Konfirmasi Kata Sandi Baru", prefixIcon: Icon(Icons.lock_outline, color: colorScheme.primary)),
             textInputAction: TextInputAction.done,
             enabled: !_isLoading,
+            style: textTheme.bodyLarge,
             onFieldSubmitted: (_) => _isLoading ? null : _resetPassword(),
             validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Konfirmasi kata sandi tidak boleh kosong';
-              }
-              if (value != _newPasswordController.text) {
-                return 'Kata sandi tidak cocok';
-              }
+              if (value == null || value.isEmpty) return "Konfirmasi kata sandi tidak boleh kosong";
+              if (value != _newPasswordController.text) return "Kata sandi tidak cocok";
               return null;
             },
-            style: GoogleFonts.poppins(color: Colors.black87),
           ),
           const SizedBox(height: 20),
           if (_errorMessage.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 15.0),
-              child: Text(
-                _errorMessage,
-                style: GoogleFonts.poppins(color: Colors.redAccent, fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
+              child: Text(_errorMessage, style: textTheme.bodySmall?.copyWith(color: AppSemanticColors.danger(context)), textAlign: TextAlign.center),
             ),
           ElevatedButton(
             onPressed: _isLoading ? null : _resetPassword,
-            style: _buttonStyle(),
-            child: _isLoading
-                ? _loadingIndicator()
-                : Text('Simpan Kata Sandi Baru', style: GoogleFonts.poppins(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold)),
+            child: _isLoading ? _loadingIndicator(colorScheme) : Text("Reset Kata Sandi", style: TextStyle(color: colorScheme.onPrimary)),
           ),
         ],
       ),
     );
   }
 
+  Widget _loadingIndicator(ColorScheme colorScheme) {
+    return SizedBox(
+      width: 20,
+      height: 20,
+      child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation<Color>(colorScheme.onPrimary)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colorScheme = theme.colorScheme;
+    final TextTheme textTheme = theme.textTheme;
+
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('Lupa Kata Sandi', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFFFFF5F5),
-        foregroundColor: primaryColor,
-        elevation: 4,
-        shadowColor: Colors.black26,
+        title: Text("Lupa Kata Sandi", style: textTheme.titleLarge?.copyWith(color: colorScheme.onPrimary)),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back, color: colorScheme.onPrimary),
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
         ),
       ),
@@ -476,22 +369,12 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
         onTap: () => FocusScope.of(context).unfocus(),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 30.0),
+            padding: const EdgeInsets.all(24.0),
             child: Card(
-              elevation: 3,
-              color: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 5, // Keep some elevation for card distinction
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  switchInCurve: Curves.easeIn,
-                  switchOutCurve: Curves.easeOut,
-                  transitionBuilder: (Widget child, Animation<double> animation) {
-                    return FadeTransition(opacity: animation, child: child);
-                  },
-                  child: _buildCurrentStepWidget(),
-                ),
+                padding: const EdgeInsets.all(20.0),
+                child: _buildCurrentStepWidget(theme, colorScheme, textTheme),
               ),
             ),
           ),
@@ -499,65 +382,5 @@ class _LupaPasswordPageState extends State<LupaPasswordPage> {
       ),
     );
   }
-
-  // --- Helper Widgets ---
-
-  InputDecoration _inputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, color: Colors.grey.shade600),
-      labelStyle: GoogleFonts.poppins(color: Colors.grey.shade600),
-      filled: true,
-      fillColor: Colors.grey.shade100,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: primaryColor, width: 2),
-      ),
-      disabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.redAccent, width: 1.2),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.redAccent, width: 2),
-      ),
-      contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
-    );
-  }
-
-  ButtonStyle _buttonStyle() {
-    return ElevatedButton.styleFrom(
-      backgroundColor: primaryColor,
-      foregroundColor: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 3,
-      disabledBackgroundColor: Colors.grey.shade400,
-      disabledForegroundColor: Colors.white70,
-      textStyle: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold),
-    );
-  }
-
-  Widget _loadingIndicator() {
-    return const SizedBox(
-      height: 20,
-      width: 20,
-      child: CircularProgressIndicator(
-        color: Colors.white,
-        strokeWidth: 2.5,
-      ),
-    );
-  }
 }
+

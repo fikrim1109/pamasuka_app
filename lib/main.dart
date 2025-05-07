@@ -1,15 +1,23 @@
-// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:pamasuka/login_page.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:pamasuka/app_theme.dart'; // Assuming app_theme.dart is in lib/
+import 'package:pamasuka/theme_provider.dart'; // Assuming theme_provider.dart is in lib/
 
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
-void main() {
+void main() async { // Added async
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-  runApp(const MyApp());
+  // SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky); // This might be better handled by theme or per-page
+  // It's generally recommended to initialize providers at the top level.
+  // SharedPreferences initialization is handled within ThemeNotifier, so no need to await here explicitly for that.
+  runApp(
+    ChangeNotifierProvider<ThemeNotifier>(
+      create: (_) => ThemeNotifier(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -17,43 +25,18 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Access the ThemeNotifier
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+
     return MaterialApp(
       title: 'Samalonian',
-      theme: ThemeData(
-        textTheme: GoogleFonts.poppinsTextTheme(),
-        primaryColor: const Color(0xFFC0392B),
-        scaffoldBackgroundColor: Colors.white,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFFFF5F5), // Latar merah muda pucat
-          foregroundColor: Color(0xFFC0392B),
-          elevation: 4, // Bayangan halus
-          shadowColor: Colors.black26,
-          titleTextStyle: TextStyle(
-            color: Color(0xFFC0392B),
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFC0392B),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-            textStyle: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-        ),
-        cardTheme: CardTheme(
-          color: Colors.white,
-          elevation: 3,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        ),
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeNotifier.themeMode, // Use themeMode from ThemeNotifier
       navigatorObservers: [routeObserver],
       home: const LoginPage(),
       debugShowCheckedModeBanner: false,
     );
   }
 }
+

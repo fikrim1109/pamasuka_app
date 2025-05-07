@@ -1,10 +1,11 @@
 // File: lib/PerformaPage.dart
-import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:fl_chart/fl_chart.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:pamasuka/viewform.dart'; // Import ViewFormPage
+import "dart:convert";
+import "package:flutter/material.dart";
+import "package:http/http.dart" as http;
+import "package:fl_chart/fl_chart.dart";
+// import "package:google_fonts/google_fonts.dart"; // Replaced by Theme
+import "package:pamasuka/viewform.dart"; // Import ViewFormPage
+import "package:pamasuka/app_theme.dart"; // Import AppTheme
 
 class PerformaPage extends StatefulWidget {
   final int userId;
@@ -21,13 +22,11 @@ class _PerformaPageState extends State<PerformaPage> {
   String? _errorMessage;
   String? _selectedFilter;
 
-  // Warna konsisten
-  final Color primaryColor = const Color(0xFFC0392B);
+  // Removed: final Color primaryColor = const Color(0xFFC0392B);
 
-  // Nama bulan dalam Bahasa Indonesia
   final List<String> _monthNames = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
   ];
 
   @override
@@ -37,6 +36,7 @@ class _PerformaPageState extends State<PerformaPage> {
   }
 
   Future<void> _fetchData() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -44,13 +44,15 @@ class _PerformaPageState extends State<PerformaPage> {
 
     try {
       final data = await _getSurveyData();
+      if (!mounted) return;
       setState(() {
-        _monthlyVisits = data['monthly_visits'];
-        _outletVisits = data['outlet_visits'];
+        _monthlyVisits = data["monthly_visits"];
+        _outletVisits = data["outlet_visits"];
         _outletVisits.sort((a, b) => a.outletName.compareTo(b.outletName));
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
@@ -59,103 +61,64 @@ class _PerformaPageState extends State<PerformaPage> {
   }
 
   Future<Map<String, dynamic>> _getSurveyData() async {
-    final url = Uri.parse('https://tunnel.jato.my.id/test%20api/get_survei_data.php');
-    final queryParams = {
-      'user_id': widget.userId.toString(),
+    final url = Uri.parse("https://tunnel.jato.my.id/test%20api/get_survei_data.php");
+    final queryParams = <String, String>{
+      "user_id": widget.userId.toString(),
     };
 
-    if (_selectedFilter == 'today') {
-      queryParams['filter'] = 'today';
-    } else if (_selectedFilter != null && _selectedFilter != 'all') {
-      queryParams['month'] = _selectedFilter!;
+    if (_selectedFilter == "today") {
+      queryParams["filter"] = "today";
+    } else if (_selectedFilter != null && _selectedFilter != "all") {
+      queryParams["month"] = _selectedFilter!;
     }
 
-    final response = await http.get(url.replace(queryParameters: queryParams));
+    final response = await http.get(url.replace(queryParameters: queryParams)).timeout(const Duration(seconds: 30));
 
     if (response.statusCode == 200) {
       try {
         final data = json.decode(response.body);
-        if (data is Map && data['success'] == true) {
+        if (data is Map && data["success"] == true) {
           return {
-            'monthly_visits': (data['monthly_visits'] as List).map((e) => MonthlyVisit.fromJson(e)).toList(),
-            'outlet_visits': (data['outlet_visits'] as List).map((e) => OutletVisit.fromJson(e)).toList(),
+            "monthly_visits": (data["monthly_visits"] as List).map((e) => MonthlyVisit.fromJson(e)).toList(),
+            "outlet_visits": (data["outlet_visits"] as List).map((e) => OutletVisit.fromJson(e)).toList(),
           };
-        } else if (data is Map && data['success'] == false) {
-          throw Exception(data['message'] ?? 'Kesalahan tidak diketahui');
+        } else if (data is Map && data["success"] == false) {
+          throw Exception(data["message"] ?? "Kesalahan tidak diketahui dari server.");
         } else {
-          throw Exception('Format respons tidak valid');
+          throw Exception("Format respons tidak valid dari server.");
         }
       } catch (e) {
-        throw Exception('Format data tidak valid: $e');
+        throw Exception("Gagal memproses data: ${e.toString()}");
       }
     } else {
-      throw Exception('Gagal memuat data: ${response.statusCode}');
+      throw Exception("Gagal memuat data dari server: Status ${response.statusCode}");
     }
   }
 
   void _onFilterChanged(String? filter) {
+    if (!mounted) return;
     setState(() {
       _selectedFilter = filter;
     });
     _fetchData();
   }
 
-  // --- Input Decoration Helper ---
-  InputDecoration _inputDecoration({
-    required String label,
-    String? hint,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      prefixIcon: Icon(Icons.filter_list, color: Colors.grey.shade600),
-      labelStyle: GoogleFonts.poppins(color: Colors.grey.shade600),
-      filled: true,
-      fillColor: Colors.grey.shade100,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: primaryColor, width: 2),
-      ),
-      disabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.redAccent, width: 1.2),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.redAccent, width: 2),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colorScheme = theme.colorScheme;
+    final TextTheme textTheme = theme.textTheme;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      // backgroundColor: theme.scaffoldBackgroundColor, // Handled by theme
       appBar: AppBar(
-        title: Text('Performa SF', style: GoogleFonts.poppins()),
-        centerTitle: true,
-        backgroundColor: const Color(0xFFFFF5F5),
-        foregroundColor: primaryColor,
-        elevation: 4,
-        shadowColor: Colors.black26,
+        title: Text("Performa SF", style: textTheme.titleLarge?.copyWith(color: colorScheme.onPrimary)),
+        // centerTitle, backgroundColor, foregroundColor, elevation, shadowColor handled by theme.appBarTheme
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: primaryColor),
+            icon: Icon(Icons.refresh, color: colorScheme.onPrimary), // Ensure icon color contrasts
             onPressed: _isLoading ? null : _fetchData,
-            tooltip: 'Segarkan Data',
+            tooltip: "Segarkan Data",
           ),
         ],
       ),
@@ -166,156 +129,140 @@ class _PerformaPageState extends State<PerformaPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(color: primaryColor),
+                    CircularProgressIndicator(), // Color handled by theme
                     const SizedBox(height: 15),
-                    Text('Memuat data...', style: GoogleFonts.poppins()),
+                    Text("Memuat data...", style: textTheme.bodyLarge),
                   ],
                 ),
               )
             : _errorMessage != null
                 ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Kesalahan: $_errorMessage',
-                          style: GoogleFonts.poppins(color: Colors.redAccent),
-                        ),
-                        const SizedBox(height: 10),
-                        ElevatedButton(
-                          onPressed: _fetchData,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.error_outline, color: AppSemanticColors.danger(context), size: 50),
+                              const SizedBox(height: 15),
+                              Text("Kesalahan Memuat Data", style: textTheme.headlineSmall?.copyWith(color: colorScheme.primary), textAlign: TextAlign.center),
+                              const SizedBox(height: 10),
+                              Text(_errorMessage!, textAlign: TextAlign.center, style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant)),
+                              const SizedBox(height: 20),
+                              ElevatedButton.icon(
+                                onPressed: _fetchData,
+                                icon: Icon(Icons.refresh, color: colorScheme.onPrimary),
+                                label: Text("Coba Lagi", style: TextStyle(color: colorScheme.onPrimary)),
+                              ),
+                            ],
                           ),
-                          child: Text('Coba Lagi', style: GoogleFonts.poppins()),
                         ),
-                      ],
+                      ),
                     ),
                   )
-                : SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _buildFilterDropdown(),
-                        _buildMonthlyChart(),
-                        _outletVisits.isEmpty
-                            ? Padding(
+                : RefreshIndicator(
+                    onRefresh: _fetchData,
+                    color: colorScheme.primary, // Refresh indicator color
+                    backgroundColor: colorScheme.surface, // Refresh indicator background
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(), // Ensures RefreshIndicator works even if content is small
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildFilterDropdown(theme, colorScheme, textTheme),
+                          if (_monthlyVisits.isNotEmpty) _buildMonthlyChart(theme, colorScheme, textTheme),
+                          if (_monthlyVisits.isEmpty && !_isLoading && _errorMessage == null) 
+                            Padding(
                                 padding: const EdgeInsets.all(20),
                                 child: Center(
-                                  child: Text(
-                                    'Tidak ada data untuk periode ini',
-                                    style: GoogleFonts.poppins(fontSize: 14),
-                                  ),
+                                  child: Text("Tidak ada data kunjungan bulanan untuk periode ini", style: textTheme.titleMedium?.copyWith(color: colorScheme.onSurfaceVariant), textAlign: TextAlign.center,)
                                 ),
-                              )
-                            : ListView.builder(
+                            ),
+                          if (_outletVisits.isEmpty && !_isLoading && _errorMessage == null)
+                            Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Center(
+                                  child: Text("Tidak ada data kunjungan outlet untuk periode ini", style: textTheme.titleMedium?.copyWith(color: colorScheme.onSurfaceVariant), textAlign: TextAlign.center,)
+                                ),
+                            )
+                          else if (_outletVisits.isNotEmpty)
+                            ListView.builder(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 itemCount: _outletVisits.length,
                                 itemBuilder: (context, index) {
                                   final visit = _outletVisits[index];
-                                  return GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => ViewFormPage(
-                                            outletName: visit.outletName,
-                                            userId: widget.userId,
+                                  return Card(
+                                    margin: const EdgeInsets.symmetric(vertical: 6),
+                                    // elevation, shape handled by theme.cardTheme
+                                    child: ListTile(
+                                      title: Text(visit.outletName, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500)),
+                                      trailing: Text("${visit.visitCount} kunjungan", style: textTheme.bodyLarge?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold)),
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => ViewFormPage(
+                                              outletName: visit.outletName,
+                                              userId: widget.userId,
+                                            ),
                                           ),
-                                        ),
-                                      );
-                                    },
-                                    child: Card(
-                                      margin: const EdgeInsets.symmetric(vertical: 8),
-                                      elevation: 2,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(16),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                visit.outletName,
-                                                style: GoogleFonts.poppins(fontSize: 14),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            Text(
-                                              '${visit.visitCount} kunjungan',
-                                              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+                                        );
+                                      },
                                     ),
                                   );
                                 },
                               ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
       ),
     );
   }
 
-  Widget _buildFilterDropdown() {
+  Widget _buildFilterDropdown(ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.all(16.0),
       child: Card(
-        elevation: 3,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        // elevation, shape handled by theme.cardTheme
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Filter Berdasarkan Periode',
-                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+              Text("Filter Berdasarkan Periode", style: textTheme.titleLarge?.copyWith(color: colorScheme.primary)),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String?>(
+                value: _selectedFilter,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: "Pilih Periode",
+                  // prefixIcon: Icon(Icons.filter_list, color: colorScheme.onSurfaceVariant),
+                  // filled, fillColor, border handled by theme.inputDecorationTheme
                 ),
-                child: DropdownButtonFormField<String?>(
-                  value: _selectedFilter,
-                  isExpanded: true,
-                  decoration: _inputDecoration(
-                    label: 'Pilih Periode',
-                    hint: 'Semua',
+                style: textTheme.bodyLarge,
+                items: [
+                  DropdownMenuItem<String?>(
+                    value: "all",
+                    child: Text("Semua", style: textTheme.bodyLarge),
                   ),
-                  items: [
-                    DropdownMenuItem<String?>(
-                      value: 'all',
-                      child: Text('Semua', style: GoogleFonts.poppins()),
-                    ),
-                    DropdownMenuItem<String?>(
-                      value: 'today',
-                      child: Text('Hari Ini', style: GoogleFonts.poppins()),
-                    ),
-                    ...List.generate(12, (index) {
-                      final month = (index + 1).toString();
-                      return DropdownMenuItem<String>(
-                        value: month,
-                        child: Text(_monthNames[index], style: GoogleFonts.poppins()),
-                      );
-                    }),
-                  ],
-                  onChanged: _isLoading ? null : _onFilterChanged,
-                ),
+                  DropdownMenuItem<String?>(
+                    value: "today",
+                    child: Text("Hari Ini", style: textTheme.bodyLarge),
+                  ),
+                  ...List.generate(12, (index) {
+                    final month = (index + 1).toString();
+                    return DropdownMenuItem<String>(
+                      value: month,
+                      child: Text(_monthNames[index], style: textTheme.bodyLarge),
+                    );
+                  }),
+                ],
+                onChanged: _isLoading ? null : _onFilterChanged,
               ),
             ],
           ),
@@ -324,39 +271,64 @@ class _PerformaPageState extends State<PerformaPage> {
     );
   }
 
-  Widget _buildMonthlyChart() {
-    double maxVisitCount = _monthlyVisits.fold(0, (prev, mv) => mv.visitCount > prev ? mv.visitCount : prev).toDouble();
-    double interval = 5.0;
+  Widget _buildMonthlyChart(ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
+    double maxVisitCount = _monthlyVisits.fold(0, (prev, mv) => mv.visitCount > prev ? mv.visitCount.toDouble() : prev.toDouble());
+    double interval = (maxVisitCount / 5).ceil().toDouble(); // Dynamic interval, at least 1
+    if (interval < 1.0) interval = 1.0;
+    if (maxVisitCount == 0) interval = 1.0; // Ensure interval is not 0 if maxVisitCount is 0
+    
     double maxY = (maxVisitCount / interval).ceil() * interval;
+    if (maxY == 0 && maxVisitCount > 0) maxY = interval; // Ensure maxY is at least interval if there are visits
+    if (maxY == 0 && maxVisitCount == 0) maxY = 5 * interval; // Default if no visits at all
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Card(
-        elevation: 3,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        // elevation, shape handled by theme.cardTheme
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Kunjungan Per Bulan',
-                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
+              Text("Kunjungan Per Bulan", style: textTheme.titleLarge?.copyWith(color: colorScheme.primary)),
+              const SizedBox(height: 20),
               SizedBox(
-                height: 200,
+                height: 220, // Increased height for better readability
                 child: BarChart(
                   BarChartData(
                     alignment: BarChartAlignment.spaceAround,
+                    maxY: maxY,
+                    barTouchData: BarTouchData(
+                        touchTooltipData: BarTouchTooltipData(
+                            getTooltipColor: (BarChartGroupData group) => colorScheme.surfaceVariant, // Use theme color for tooltip background
+                            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                                String monthName = _monthNames[group.x.toInt() -1];
+                                return BarTooltipItem(
+                                    "$monthName\n",
+                                    textTheme.bodyMedium!.copyWith(color: colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold),
+                                    children: <TextSpan>[
+                                        TextSpan(
+                                            text: rod.toY.round().toString(),
+                                            style: textTheme.bodyLarge!.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold),
+                                        ),
+                                        TextSpan(
+                                            text: " kunjungan",
+                                            style: textTheme.bodyMedium!.copyWith(color: colorScheme.onSurfaceVariant),
+                                        ),
+                                    ],
+                                );
+                            }
+                        ),
+                    ),
                     barGroups: _monthlyVisits.map((mv) {
                       return BarChartGroupData(
                         x: mv.month,
                         barRods: [
                           BarChartRodData(
                             toY: mv.visitCount.toDouble(),
-                            color: primaryColor,
-                            width: 12, // Dikurangi dari 16 untuk lebih banyak ruang
+                            color: colorScheme.primary, // Use theme color
+                            width: 14, // Adjusted width
+                            borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(4)),
                           ),
                         ],
                       );
@@ -367,31 +339,30 @@ class _PerformaPageState extends State<PerformaPage> {
                           showTitles: true,
                           getTitlesWidget: (double value, TitleMeta meta) {
                             int month = value.toInt();
-                            if (month >= 1 && month <= 12) { // Show all months
-                              return RotatedBox(
-                                quarterTurns: 1, // Rotasi 90 derajat untuk kejelasan
+                            if (month >= 1 && month <= 12) {
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 6.0),
                                 child: Text(
                                   _monthNames[month - 1].substring(0, 3),
-                                  style: GoogleFonts.poppins(fontSize: 12, color: Colors.black),
-                                  textAlign: TextAlign.center,
+                                  style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
                                 ),
                               );
                             }
                             return const SizedBox();
                           },
-                          reservedSize: 40, // Ditambah dari 30 untuk teks yang diputar
+                          reservedSize: 30,
                         ),
                       ),
                       leftTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
-                          reservedSize: 40,
+                          reservedSize: 35,
                           interval: interval,
                           getTitlesWidget: (double value, TitleMeta meta) {
-                            if (value % interval == 0) {
+                            if (value % interval == 0 || value == maxY) {
                               return Text(
                                 value.toInt().toString(),
-                                style: GoogleFonts.poppins(fontSize: 12, color: Colors.black),
+                                style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
                               );
                             }
                             return const SizedBox();
@@ -401,9 +372,17 @@ class _PerformaPageState extends State<PerformaPage> {
                       topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                       rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     ),
-                    borderData: FlBorderData(show: false),
-                    gridData: const FlGridData(show: false),
-                    maxY: maxY,
+                    gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        getDrawingHorizontalLine: (value) {
+                            return FlLine(color: colorScheme.onSurface.withOpacity(0.1), strokeWidth: 1);
+                        },
+                    ),
+                    borderData: FlBorderData(
+                        show: true,
+                        border: Border.all(color: colorScheme.onSurface.withOpacity(0.1), width: 1)
+                    ),
                   ),
                 ),
               ),
@@ -423,8 +402,8 @@ class MonthlyVisit {
 
   factory MonthlyVisit.fromJson(Map<String, dynamic> json) {
     return MonthlyVisit(
-      month: json['month'] ?? 0,
-      visitCount: (json['visit_count'] is int ? json['visit_count'] : int.tryParse(json['visit_count'].toString())) ?? 0,
+      month: int.parse(json["month"].toString()),
+      visitCount: int.parse(json["visit_count"].toString()),
     );
   }
 }
@@ -437,8 +416,9 @@ class OutletVisit {
 
   factory OutletVisit.fromJson(Map<String, dynamic> json) {
     return OutletVisit(
-      outletName: json['outlet_nama'] ?? 'Tidak Diketahui',
-      visitCount: (json['visit_count'] is int ? json['visit_count'] : int.tryParse(json['visit_count'].toString())) ?? 0,
+      outletName: json["outlet_nama"],
+      visitCount: int.parse(json["visit_count"].toString()),
     );
   }
 }
+
