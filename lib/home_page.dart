@@ -1,13 +1,13 @@
-// File: lib/home_page.dart
-import "dart:convert";
-import "dart:io";
-import "package:flutter/material.dart";
-import "package:intl/intl.dart";
-import "package:flutter/services.dart";
-import "package:image_picker/image_picker.dart";
-import "package:http/http.dart" as http;
-import "package:dropdown_search/dropdown_search.dart";
-import "package:pamasuka/app_theme.dart"; // Import AppTheme
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:dropdown_search/dropdown_search.dart';
+import 'package:pamasuka/app_theme.dart'; // Import AppTheme
+import 'package:pamasuka/currency_input_formatter.dart'; // Import CurrencyInputFormatter
 
 class HomePage extends StatefulWidget {
   final String username;
@@ -46,8 +46,8 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _clusterController = TextEditingController();
   final TextEditingController _idOutletController = TextEditingController();
   final TextEditingController _hariController = TextEditingController();
-  final TextEditingController _namaController = TextEditingController();
-  final TextEditingController _tokoController = TextEditingController();
+  final TextEditingController _namaController = TextEditingController(); 
+  final TextEditingController _tokoController = TextEditingController(); 
   final TextEditingController _keteranganController = TextEditingController();
 
   List<Map<String, dynamic>> _outlets = [];
@@ -66,14 +66,14 @@ class _HomePageState extends State<HomePage> {
   static const List<String> _fixedOperators = ["TELKOMSEL", "XL", "INDOSAT OOREDOO", "AXIS", "SMARTFREN", "3"];
 
   int _totalHargaEntriesCount = 0;
-  final int _maxHargaEntries = 100;
+  final int _maxHargaEntries = 15; 
   final List<String> _paketOptions = ["VOUCHER FISIK", "PERDANA INTERNET"];
 
   @override
   void initState() {
     super.initState();
-    _tokoController.text = DateFormat("yyyy-MM-dd").format(DateTime.now());
-    _namaController.text = widget.username;
+    _tokoController.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    _namaController.text = widget.username; 
     _fetchOutlets();
   }
 
@@ -99,8 +99,11 @@ class _HomePageState extends State<HomePage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: Theme.of(context).snackBarTheme.contentTextStyle),
+        content: Text(message, style: Theme.of(context).snackBarTheme.contentTextStyle ?? TextStyle(color: Theme.of(context).colorScheme.onInverseSurface)),
         backgroundColor: isError ? AppSemanticColors.danger(context) : AppSemanticColors.success(context),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
@@ -118,15 +121,18 @@ class _HomePageState extends State<HomePage> {
       });
       _hargaEntryControllersMap.clear();
       _totalHargaEntriesCount = 0;
-      if (_selectedOutlet == null) {
+
+      if (_selectedOutlet != null) {
+        // Fields related to outlet are auto-filled
+      } else {
         _idOutletController.clear();
         _regionController.clear();
         _branchController.clear();
         _clusterController.clear();
         _hariController.clear();
       }
-      _tokoController.text = DateFormat("yyyy-MM-dd").format(DateTime.now());
-      _namaController.text = widget.username;
+      _tokoController.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      _namaController.text = widget.username; 
     });
   }
 
@@ -138,6 +144,7 @@ class _HomePageState extends State<HomePage> {
       });
       _hargaEntryControllersMap.clear();
       _totalHargaEntriesCount = 0;
+
       for (int i = 0; i < _fixedOperators.length; i++) {
         String operatorName = _fixedOperators[i];
         _operatorSurveyGroups.add({
@@ -146,7 +153,7 @@ class _HomePageState extends State<HomePage> {
           "entries": [{"nama_paket": "", "harga": "", "jumlah": ""}],
           "isHidden": false
         });
-        _hargaEntryControllersMap[i] = {0: HargaEntryControllers()};
+        _hargaEntryControllersMap[i] = { 0: HargaEntryControllers() };
         _totalHargaEntriesCount++;
       }
     });
@@ -154,7 +161,7 @@ class _HomePageState extends State<HomePage> {
 
   void _addHargaEntry(int groupIndex) {
     if (_totalHargaEntriesCount >= _maxHargaEntries) {
-      _showStyledSnackBar("Batas maksimal $_maxHargaEntries data paket tercapai", isError: true);
+      _showStyledSnackBar('Batas maksimal $_maxHargaEntries data paket tercapai', isError: true);
       return;
     }
     setState(() {
@@ -190,7 +197,7 @@ class _HomePageState extends State<HomePage> {
           _totalHargaEntriesCount--;
         }
       } else {
-        _showStyledSnackBar("Minimal harus ada satu data paket per operator", isError: true);
+        _showStyledSnackBar('Minimal harus ada satu data paket per operator', isError: true);
       }
     });
   }
@@ -212,22 +219,25 @@ class _HomePageState extends State<HomePage> {
       _hariController.clear();
     });
     try {
-      var url = Uri.parse("$_outletApiUrl?user_id=${widget.userId}");
+      var url = Uri.parse('$_outletApiUrl?user_id=${widget.userId}');
       var response = await http.get(url).timeout(const Duration(seconds: 20));
+
       if (response.statusCode == 200) {
         var data = json.decode(response.body);
-        if (data is Map && data.containsKey("success") && data["success"] == true && data["outlets"] is List) {
-          final List<Map<String, dynamic>> fetchedOutlets = List<Map<String, dynamic>>.from(data["outlets"] as List<dynamic>);
+        if (data is Map && data.containsKey('success') && data['success'] == true && data['outlets'] is List) {
+          final List<Map<String, dynamic>> fetchedOutlets = List<Map<String, dynamic>>.from(data['outlets'] as List<dynamic>);
           Map<String, dynamic>? initialOutlet;
-          String initialId = "", initialRegion = "", initialBranch = "", initialCluster = "", initialHari = "";
+          String initialId = '', initialRegion = '', initialBranch = '', initialCluster = '', initialHari = '';
+
           if (fetchedOutlets.isNotEmpty) {
             initialOutlet = fetchedOutlets[0];
-            initialId = initialOutlet["id_outlet"]?.toString() ?? "";
-            initialRegion = initialOutlet["region"] ?? "";
-            initialBranch = initialOutlet["branch"] ?? "";
-            initialCluster = initialOutlet["cluster"] ?? initialOutlet["area"] ?? "";
-            initialHari = initialOutlet["hari"] ?? "";
+            initialId = initialOutlet['id_outlet']?.toString() ?? '';
+            initialRegion = initialOutlet['region'] ?? '';
+            initialBranch = initialOutlet['branch'] ?? '';
+            initialCluster = initialOutlet['cluster'] ?? initialOutlet['area'] ?? '';
+            initialHari = initialOutlet['hari'] ?? '';
           }
+
           if (mounted) {
             setState(() {
               _outlets = fetchedOutlets;
@@ -240,14 +250,14 @@ class _HomePageState extends State<HomePage> {
             });
           }
         } else {
-          String errorMessage = data is Map && data.containsKey("message") ? data["message"] : "Gagal mengambil data outlet: Format data tidak sesuai.";
+          String errorMessage = data is Map && data.containsKey('message') ? data['message'] : 'Gagal mengambil data outlet: Format data tidak sesuai.';
           if (mounted) _showStyledSnackBar(errorMessage, isError: true);
         }
       } else {
-        if (mounted) _showStyledSnackBar("Gagal mengambil data outlet (Error Server: ${response.statusCode})", isError: true);
+        if (mounted) _showStyledSnackBar('Gagal mengambil data outlet (Error Server: ${response.statusCode})', isError: true);
       }
     } catch (e) {
-      if (mounted) _showStyledSnackBar("Terjadi kesalahan jaringan saat mengambil outlet: $e", isError: true);
+      if (mounted) _showStyledSnackBar('Terjadi kesalahan jaringan saat mengambil outlet: $e', isError: true);
     } finally {
       if (mounted) { setState(() { _isLoadingOutlets = false; }); }
     }
@@ -261,132 +271,170 @@ class _HomePageState extends State<HomePage> {
         if (mounted) { setState(() { onImagePicked(File(pickedFile.path)); }); }
       }
     } catch (e) {
-      if (mounted) _showStyledSnackBar("Gagal mengambil gambar: $e", isError: true);
+      if (mounted) _showStyledSnackBar('Gagal mengambil gambar: $e', isError: true);
     }
   }
 
   Future<void> _submitForm({bool confirmDuplicate = false}) async {
     FocusScope.of(context).unfocus();
-    final ThemeData theme = Theme.of(context);
 
     if (!_formKey.currentState!.validate()) {
-      _showStyledSnackBar("Harap periksa kembali data yang belum terisi atau tidak valid", isError: true);
+      _showStyledSnackBar('Harap periksa kembali data yang belum terisi atau tidak valid', isError: true);
       return;
     }
     if (_selectedOutlet == null) {
-      _showStyledSnackBar("Outlet belum terpilih atau data outlet gagal dimuat", isError: true);
+      _showStyledSnackBar('Outlet belum terpilih atau data outlet gagal dimuat', isError: true);
       return;
     }
     if (_selectedBrandinganOption == null) {
-      _showStyledSnackBar("Silakan pilih jenis survei", isError: true);
+      _showStyledSnackBar('Silakan pilih jenis survei', isError: true);
       return;
     }
 
-    bool isBrandingValid = true;
     List<Map<String, dynamic>> finalHargaData = [];
 
     if (_selectedBrandinganOption == "Survei branding") {
       if (_brandingImageEtalase == null || _brandingImageTampakDepan == null) {
-        isBrandingValid = false;
-        _showStyledSnackBar("Untuk Survei Branding, kedua gambar wajib diunggah.", isError: true);
+        _showStyledSnackBar('Silakan ambil kedua gambar branding', isError: true);
         return;
       }
     } else if (_selectedBrandinganOption == "Survei harga") {
-      bool allHargaValid = true;
+      bool isHargaDataValid = true;
       for (int i = 0; i < _operatorSurveyGroups.length; i++) {
         var group = _operatorSurveyGroups[i];
-        if (group["paket"] == null || (group["paket"] as String).isEmpty) {
-          _showStyledSnackBar("Jenis paket untuk operator ${group["operator"]} belum dipilih.", isError: true);
-          return;
-        }
-        List entries = group["entries"];
-        for (int j = 0; j < entries.length; j++) {
-          var entry = entries[j];
+        String operatorName = group["operator"];
+        String? paketType = group["paket"];
+        List<Map<String, String>> currentEntriesData = [];
+        List groupEntriesSource = group["entries"];
+        bool operatorHasFilledEntries = false;
+
+        for (int j = 0; j < groupEntriesSource.length; j++) {
           HargaEntryControllers? controllers = _hargaEntryControllersMap[i]?[j];
-          if (controllers == null || controllers.namaPaketController.text.trim().isEmpty || controllers.hargaController.text.trim().isEmpty || controllers.jumlahController.text.trim().isEmpty) {
-            allHargaValid = false;
+          String namaPaket = controllers?.namaPaketController.text.trim() ?? "";
+          String hargaInput = controllers?.hargaController.text.trim() ?? "";
+          String jumlahInput = controllers?.jumlahController.text.trim() ?? "";
+
+          if (namaPaket.isNotEmpty || hargaInput.isNotEmpty || jumlahInput.isNotEmpty) {
+            operatorHasFilledEntries = true;
+            if (namaPaket.isEmpty || hargaInput.isEmpty || jumlahInput.isEmpty) {
+              _showStyledSnackBar('Data paket untuk operator $operatorName (entri ke-${j + 1}) tidak lengkap. Harap isi semua kolom atau kosongkan semua.', isError: true);
+              isHargaDataValid = false;
+              break;
+            }
+            // Remove formatting for backend submission
+            String hargaNumerikBersih = hargaInput.replaceAll(RegExp(r'[^0-9]'), '');
+            currentEntriesData.add({ "nama_paket": namaPaket, "harga": hargaNumerikBersih, "jumlah": jumlahInput });
+          }
+        }
+
+        if (!isHargaDataValid) break;
+
+        if (operatorHasFilledEntries) {
+          if (paketType == null || paketType.isEmpty) {
+            _showStyledSnackBar('Jenis paket untuk operator $operatorName belum dipilih.', isError: true);
+            isHargaDataValid = false;
             break;
           }
-          entry["nama_paket"] = controllers.namaPaketController.text.trim();
-          entry["harga"] = controllers.hargaController.text.trim().replaceAll(".", "");
-          entry["jumlah"] = controllers.jumlahController.text.trim();
+          if (currentEntriesData.isNotEmpty) {
+             finalHargaData.add({ "operator": operatorName, "paket": paketType, "entries": currentEntriesData });
+          }
         }
-        if (!allHargaValid) {
-          _showStyledSnackBar("Data harga untuk operator ${group["operator"]} belum lengkap.", isError: true);
-          return;
-        }
-        finalHargaData.add({
-          "operator": group["operator"],
-          "paket": group["paket"],
-          "entries": entries,
-        });
       }
-      if (finalHargaData.isEmpty && _operatorSurveyGroups.isNotEmpty) {
-         _showStyledSnackBar("Tidak ada data harga yang diisi.", isError: true);
-         return;
+      if (!isHargaDataValid) return;
+      bool anyEntryFilledAcrossOperators = _operatorSurveyGroups.any((group) => 
+          (group["entries"] as List).any((entry) => 
+              (_hargaEntryControllersMap[ _operatorSurveyGroups.indexOf(group)]?[ (group["entries"] as List).indexOf(entry)]?.namaPaketController.text.trim().isNotEmpty ?? false) ||
+              (_hargaEntryControllersMap[ _operatorSurveyGroups.indexOf(group)]?[ (group["entries"] as List).indexOf(entry)]?.hargaController.text.trim().isNotEmpty ?? false) ||
+              (_hargaEntryControllersMap[ _operatorSurveyGroups.indexOf(group)]?[ (group["entries"] as List).indexOf(entry)]?.jumlahController.text.trim().isNotEmpty ?? false)
+          )
+      );
+      if (finalHargaData.isEmpty && anyEntryFilledAcrossOperators) {
+          _showStyledSnackBar('Tidak ada data harga yang valid untuk dikirim. Harap periksa kembali entri Anda.', isError: true);
+          return;
       }
     }
 
-    if (!isBrandingValid) return;
+    if (mounted) setState(() { _isSubmitting = true; });
 
-    if (mounted) setState(() => _isSubmitting = true);
+    var request = http.MultipartRequest('POST', Uri.parse(_submitApiUrl));
+    request.fields['user_id'] = widget.userId.toString();
+    request.fields['username'] = widget.username; 
+    request.fields['nama_surveyor'] = _namaController.text.trim(); 
+    request.fields['outlet_id'] = _idOutletController.text;
+    request.fields['outlet_nama'] = _selectedOutlet?['nama_outlet']?.toString() ?? 'N/A';
+    request.fields['region'] = _regionController.text;
+    request.fields['branch'] = _branchController.text;
+    request.fields['cluster'] = _clusterController.text;
+    request.fields['hari'] = _hariController.text;
+    request.fields['tanggal_survei'] = _tokoController.text;
+    request.fields['jenis_survei'] = _selectedBrandinganOption!;
+    request.fields['keterangan_kunjungan'] = _keteranganController.text.trim();
+    if (confirmDuplicate) {
+      request.fields['confirm_duplicate'] = 'true';
+    }
 
-    var request = http.MultipartRequest("POST", Uri.parse(_submitApiUrl));
-    request.fields.addAll({
-      "user_id": widget.userId.toString(),
-      "username": _namaController.text,
-      "id_outlet": _selectedOutlet!["id_outlet"].toString(),
-      "nama_outlet": _selectedOutlet!["nama_outlet"].toString(),
-      "tanggal_survei": _tokoController.text,
-      "keterangan_kunjungan": _keteranganController.text,
-      "jenis_survei": _selectedBrandinganOption!,
-      "data_harga": _selectedBrandinganOption == "Survei harga" ? json.encode(finalHargaData) : "[]",
-      "confirm_duplicate": confirmDuplicate.toString(),
-    });
-
-    if (_selectedBrandinganOption == "Survei branding") {
-      if (_brandingImageEtalase != null) {
-        request.files.add(await http.MultipartFile.fromPath("branding_etalase", _brandingImageEtalase!.path));
+    try {
+      if (_selectedBrandinganOption == "Survei branding") {
+        if (_brandingImageEtalase != null) {
+          request.files.add(await http.MultipartFile.fromPath('foto_etalase', _brandingImageEtalase!.path));
+        }
+        if (_brandingImageTampakDepan != null) {
+          request.files.add(await http.MultipartFile.fromPath('foto_depan', _brandingImageTampakDepan!.path));
+        }
+      } else if (_selectedBrandinganOption == "Survei harga") {
+        request.fields['data_harga'] = jsonEncode(finalHargaData);
       }
-      if (_brandingImageTampakDepan != null) {
-        request.files.add(await http.MultipartFile.fromPath("branding_tampak_depan", _brandingImageTampakDepan!.path));
+    } catch (e) {
+      if (mounted) {
+        setState(() { _isSubmitting = false; });
+        _showErrorDialog('Error Mempersiapkan Data', 'Gagal memproses data survei sebelum mengirim: $e');
       }
+      return;
     }
 
     try {
       var streamedResponse = await request.send().timeout(const Duration(seconds: 60));
       var response = await http.Response.fromStream(streamedResponse);
-      if (!mounted) return;
 
-      final data = json.decode(response.body);
-      if (response.statusCode == 200 && data["success"] == true) {
-        _showSuccessDialog(data["message"] ?? "Data survei berhasil dikirim!");
-        _resetForm();
-      } else if (response.statusCode == 409 && data["success"] == false && data["type"] == "DUPLICATE_ENTRY") {
-        _showDuplicateConfirmationDialog(data["message"] ?? "Data survei untuk outlet ini pada tanggal yang sama sudah ada.");
-      } else {
-        _showErrorDialog(data["message"] ?? "Gagal mengirim data survei.");
+      if (mounted) {
+        setState(() { _isSubmitting = false; });
+        final data = json.decode(response.body);
+        if (response.statusCode == 200 && data is Map && data.containsKey('success') && data['success'] == true) {
+           _showSuccessDialog(data['message'] ?? 'Data survei berhasil dikirim.');
+           _resetForm();
+        } else if (data is Map && data.containsKey('status') && data['status'] == 'duplicate_found') {
+          _showDuplicateConfirmationDialog(data['message'] ?? 'Data duplikat ditemukan. Yakin ingin melanjutkan?');
+        } else {
+          String errorMessage = data is Map && data.containsKey('message') ? data['message'] : 'Terjadi kesalahan yang tidak diketahui dari server.';
+          _showErrorDialog('Gagal Mengirim Data', errorMessage);
+        }
       }
     } catch (e) {
-      if (mounted) _showErrorDialog("Terjadi kesalahan: ${e.toString()}");
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+      if (mounted) {
+        setState(() { _isSubmitting = false; });
+        _showErrorDialog('Error Jaringan', 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.\nError: $e');
+      }
     }
   }
 
-  void _showErrorDialog(String message) {
+  void _showErrorDialog(String title, String message) {
     if (!mounted) return;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text("Kesalahan", style: Theme.of(context).dialogTheme.titleTextStyle),
-        content: Text(message, style: Theme.of(context).dialogTheme.contentTextStyle),
-        actions: <Widget>[
+        title: Row(children: [
+          Icon(Icons.error, color: AppSemanticColors.danger(context)),
+          const SizedBox(width: 10),
+          Text(title, style: Theme.of(ctx).dialogTheme.titleTextStyle)
+        ]),
+        content: SingleChildScrollView(child: Text(message, style: Theme.of(ctx).dialogTheme.contentTextStyle)),
+        actions: [
           TextButton(
-            child: Text("OK", style: Theme.of(context).textButtonTheme.style?.textStyle?.resolve({})),
             onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Oke', style: TextStyle(color: Theme.of(ctx).colorScheme.primary)),
           ),
         ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -395,17 +443,23 @@ class _HomePageState extends State<HomePage> {
     if (!mounted) return;
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: Text("Sukses", style: Theme.of(context).dialogTheme.titleTextStyle),
-        content: Text(message, style: Theme.of(context).dialogTheme.contentTextStyle),
-        actions: <Widget>[
+        title: Row(children: [
+          Icon(Icons.check_circle, color: AppSemanticColors.success(context)),
+          const SizedBox(width: 10),
+          Text('Berhasil', style: Theme.of(ctx).dialogTheme.titleTextStyle)
+        ]),
+        content: Text(message, style: Theme.of(ctx).dialogTheme.contentTextStyle),
+        actions: [
           TextButton(
-            child: Text("OK", style: Theme.of(context).textButtonTheme.style?.textStyle?.resolve({})),
             onPressed: () {
               Navigator.of(ctx).pop();
             },
+            child: Text('Oke', style: TextStyle(color: Theme.of(ctx).colorScheme.primary)),
           ),
         ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -414,488 +468,411 @@ class _HomePageState extends State<HomePage> {
     if (!mounted) return;
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: Text("Konfirmasi Duplikasi", style: Theme.of(context).dialogTheme.titleTextStyle),
-        content: Text("$message Apakah Anda yakin ingin tetap mengirimkan data ini?", style: Theme.of(context).dialogTheme.contentTextStyle),
-        actions: <Widget>[
+        title: Row(children: [
+          Icon(Icons.warning_amber_rounded, color: AppSemanticColors.warning(context)),
+          const SizedBox(width: 10),
+          Text('Konfirmasi', style: Theme.of(ctx).dialogTheme.titleTextStyle)
+        ]),
+        content: Text(message, style: Theme.of(ctx).dialogTheme.contentTextStyle),
+        actions: [
           TextButton(
-            child: Text("Batal", style: Theme.of(context).textButtonTheme.style?.textStyle?.resolve({})),
             onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Batal', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
           ),
           TextButton(
-            child: Text("Kirim Tetap", style: Theme.of(context).textButtonTheme.style?.textStyle?.resolve({})?.copyWith(color: AppSemanticColors.danger(context))),
             onPressed: () {
               Navigator.of(ctx).pop();
               _submitForm(confirmDuplicate: true);
             },
+            child: Text('Lanjutkan', style: TextStyle(color: AppSemanticColors.danger(context))),
           ),
         ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
 
-  // Restoring original _buildTextFieldWithController styling for home_page.dart
-  Widget _buildTextFieldWithController(
-    TextEditingController controller,
-    String label, {
-    bool readOnly = false,
-    TextInputType? keyboardType,
-    List<TextInputFormatter>? inputFormatters,
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    String? hint,
+    TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
-    VoidCallback? onTap,
+    bool readOnly = false,
+    int maxLines = 1,
+    Function(String)? onChanged,
+    List<TextInputFormatter>? inputFormatters,
     String? prefixText,
   }) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme colorScheme = theme.colorScheme;
-
+    final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 6.0), 
       child: TextFormField(
         controller: controller,
         readOnly: readOnly,
-        onTap: onTap,
-        keyboardType: keyboardType ?? TextInputType.text,
+        keyboardType: keyboardType,
         inputFormatters: inputFormatters,
-        style: theme.textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
+        validator: validator,
+        maxLines: maxLines,
+        onChanged: onChanged,
+        style: theme.textTheme.bodyLarge?.copyWith(color: readOnly ? theme.colorScheme.onSurface.withOpacity(0.7) : theme.colorScheme.onSurface),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: theme.textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface.withOpacity(0.7)),
           prefixText: prefixText,
-          filled: true,
-          fillColor: readOnly ? colorScheme.onSurface.withOpacity(0.05) : colorScheme.surfaceVariant.withOpacity(0.3),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-            borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.5)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-            borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.5)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-            borderSide: BorderSide(color: colorScheme.primary, width: 2.0),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0), // Original padding
+          hintText: hint,
         ),
-        validator: validator,
+        enableInteractiveSelection: !readOnly,
+        focusNode: readOnly ? FocusNode(canRequestFocus: false) : null,
       ),
     );
   }
 
-  Widget _buildImagePickerButton(String title, File? imageFile, VoidCallback onPressed) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme colorScheme = theme.colorScheme;
-    final TextTheme textTheme = theme.textTheme;
-
+  Widget _buildImagePicker({
+    required String label,
+    File? image,
+    required VoidCallback onPick,
+    required VoidCallback onRetake,
+    bool disabled = false,
+  }) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: textTheme.titleMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
+        Text(label, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Container(
           height: 150,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: colorScheme.surfaceVariant.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: colorScheme.outline.withOpacity(0.5)),
+            border: Border.all(color: theme.colorScheme.outline.withOpacity(0.5)),
+            borderRadius: BorderRadius.circular(12),
+            color: disabled ? theme.colorScheme.onSurface.withOpacity(0.05) : theme.colorScheme.surfaceVariant.withOpacity(0.3),
+            boxShadow: [
+              BoxShadow(
+                color: theme.shadowColor.withOpacity(0.05),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          child: imageFile != null
-              ? ClipRRect(borderRadius: BorderRadius.circular(7), child: Image.file(imageFile, fit: BoxFit.cover))
-              : Center(child: Icon(Icons.image_outlined, size: 48, color: colorScheme.onSurfaceVariant.withOpacity(0.7))),
-        ),
-        const SizedBox(height: 8),
-        ElevatedButton.icon(
-          icon: const Icon(Icons.camera_alt_outlined),
-          label: Text(imageFile == null ? "Ambil Gambar" : "Ganti Gambar"),
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: colorScheme.secondary,
-            foregroundColor: colorScheme.onSecondary,
-          ),
+          child: image != null
+              ? Stack(
+                  alignment: Alignment.center,
+                  fit: StackFit.expand,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(11.0),
+                      child: Image.file(image, fit: BoxFit.cover),
+                    ),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.6),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                          tooltip: "Ambil Ulang Foto",
+                          onPressed: disabled ? null : onRetake,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Center(
+                  child: IconButton(
+                    icon: Icon(Icons.camera_alt, size: 40, color: disabled ? theme.colorScheme.onSurface.withOpacity(0.4) : theme.colorScheme.primary),
+                    tooltip: "Ambil Foto",
+                    onPressed: disabled ? null : onPick,
+                  ),
+                ),
         ),
       ],
     );
   }
 
-  Widget _buildOperatorGroupCard(int groupIndex, ThemeData theme) {
-    final group = _operatorSurveyGroups[groupIndex];
-    final String operatorName = group["operator"];
-    final bool isHidden = group["isHidden"] ?? false;
-    final ColorScheme colorScheme = theme.colorScheme;
-    final TextTheme textTheme = theme.textTheme;
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(operatorName, style: textTheme.titleLarge?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.w600)),
-                IconButton(
-                  icon: Icon(isHidden ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: colorScheme.secondary),
-                  onPressed: () => _toggleGroupVisibility(groupIndex),
-                ),
-              ],
-            ),
-            if (!isHidden) ...[
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: "Jenis Paket", 
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
-                  filled: true,
-                  fillColor: colorScheme.surfaceVariant.withOpacity(0.3),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                ),
-                style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
-                value: group["paket"],
-                items: _paketOptions.map((String value) {
-                  return DropdownMenuItem<String>(value: value, child: Text(value, style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface)));
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() { _operatorSurveyGroups[groupIndex]["paket"] = newValue; });
-                },
-                validator: (value) => value == null ? "Jenis paket harus dipilih" : null,
-              ),
-              const SizedBox(height: 12),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: (group["entries"] as List).length,
-                itemBuilder: (context, entryIndex) {
-                  // MODIFIED: Pass theme to _buildHargaEntryCard
-                  return _buildHargaEntryCard(groupIndex, entryIndex, theme);
-                },
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  icon: const Icon(Icons.add_circle_outline),
-                  label: const Text("Tambah Paket"),
-                  onPressed: () => _addHargaEntry(groupIndex),
-                  style: TextButton.styleFrom(foregroundColor: colorScheme.primary)
-                ),
-              ),
-            ]
-          ],
-        ),
-      ),
-    );
-  }
-
-  // MODIFIED: _buildHargaEntryCard to use vertical layout
-  Widget _buildHargaEntryCard(int groupIndex, int entryIndex, ThemeData theme) {
-    HargaEntryControllers? controllers = _hargaEntryControllersMap[groupIndex]?[entryIndex];
-    final TextTheme textTheme = theme.textTheme;
-    final ColorScheme colorScheme = theme.colorScheme;
-    final priceFormatter = NumberFormat("#,###", "id_ID");
-
-    InputDecoration hargaFieldDecoration(String label, {String? prefix}) {
-        return InputDecoration(
-            labelText: label,
-            labelStyle: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withOpacity(0.7)),
-            prefixText: prefix,
-            filled: true,
-            fillColor: colorScheme.surfaceVariant.withOpacity(0.3),
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.0),
-                borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.5)),
-            ),
-            enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.0),
-                borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.5)),
-            ),
-            focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.0),
-                borderSide: BorderSide(color: colorScheme.primary, width: 2.0),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-        );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text("Data Paket #${entryIndex + 1}", style: textTheme.titleSmall?.copyWith(color: colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold)),
-              ),
-              if ((_operatorSurveyGroups[groupIndex]["entries"] as List).length > 1) // Show remove button only if more than one entry
-                IconButton(
-                  icon: Icon(Icons.remove_circle_outline, color: theme.colorScheme.error, size: 24),
-                  onPressed: () => _removeHargaEntry(groupIndex, entryIndex),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: controllers?.namaPaketController,
-            style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),
-            decoration: hargaFieldDecoration("Nama Paket"),
-            validator: (v) => v == null || v.trim().isEmpty ? "Nama Paket Wajib Diisi" : null,
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: controllers?.hargaController,
-            style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),
-            decoration: hargaFieldDecoration("Harga", prefix: "Rp "),
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              TextInputFormatter.withFunction((oldValue, newValue) {
-                if (newValue.text.isEmpty) return newValue;
-                final numericValue = int.tryParse(newValue.text.replaceAll(".", ""));
-                if (numericValue == null) return oldValue;
-                final formattedText = priceFormatter.format(numericValue);
-                return TextEditingValue(
-                  text: formattedText,
-                  selection: TextSelection.collapsed(offset: formattedText.length),
-                );
-              }),
-            ],
-            validator: (v) => v == null || v.trim().isEmpty ? "Harga Wajib Diisi" : null,
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: controllers?.jumlahController,
-            style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),
-            decoration: hargaFieldDecoration("Jumlah Stok"),
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            validator: (v) => v == null || v.trim().isEmpty ? "Jumlah Wajib Diisi" : null,
-          ),
-          if (entryIndex < (_operatorSurveyGroups[groupIndex]["entries"] as List).length - 1)
-            const Divider(height: 24, thickness: 1),
-        ],
-      ),
-    );
-  }
-
  @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme colorScheme = theme.colorScheme;
-    final TextTheme textTheme = theme.textTheme;
+    final theme = Theme.of(context);
+    bool canAddMoreHarga = _totalHargaEntriesCount < _maxHargaEntries;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Form Survei Outlet PJP", style: TextStyle(color: colorScheme.onPrimary)),
-        backgroundColor: colorScheme.primary,
-        iconTheme: IconThemeData(color: colorScheme.onPrimary),
+        title: const Text('Formulir Survei'),
+        centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text("Informasi Outlet & Surveyor", style: textTheme.headlineSmall?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      _isLoadingOutlets
-                          ? const Center(child: CircularProgressIndicator())
-                          : DropdownSearch<Map<String, dynamic>>(
-                              items: _outlets,
-                              selectedItem: _selectedOutlet,
-                              itemAsString: (Map<String, dynamic>? u) => u?["nama_outlet"]?.toString() ?? "",
-                              onChanged: (Map<String, dynamic>? data) {
-                                setState(() {
-                                  _selectedOutlet = data;
-                                  if (data != null) {
-                                    _idOutletController.text = data["id_outlet"]?.toString() ?? "";
-                                    _regionController.text = data["region"] ?? "";
-                                    _branchController.text = data["branch"] ?? "";
-                                    _clusterController.text = data["cluster"] ?? data["area"] ?? "";
-                                    _hariController.text = data["hari"] ?? "";
-                                  } else {
-                                    _idOutletController.clear();
-                                    _regionController.clear();
-                                    _branchController.clear();
-                                    _clusterController.clear();
-                                    _hariController.clear();
-                                  }
-                                });
-                              },
-                              popupProps: PopupProps.menu(
-                                showSearchBox: true,
-                                searchFieldProps: TextFieldProps(
-                                  decoration: InputDecoration(
-                                    labelText: "Cari Outlet", 
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
-                                    filled: true,
-                                    fillColor: colorScheme.surfaceVariant.withOpacity(0.3),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                                  ),
-                                  style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
-                                ),
-                                menuProps: MenuProps(backgroundColor: theme.cardTheme.color ?? colorScheme.surface),
-                                itemBuilder: (context, item, isSelected) {
-                                  return ListTile(
-                                    title: Text(item["nama_outlet"]?.toString() ?? "", style: textTheme.bodyLarge?.copyWith(color: isSelected ? colorScheme.primary : colorScheme.onSurface)),
-                                    subtitle: Text(item["id_outlet"]?.toString() ?? "", style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant)),
-                                  );
-                                },
-                              ),
-                              dropdownDecoratorProps: DropDownDecoratorProps(
-                                dropdownSearchDecoration: InputDecoration(
-                                  labelText: "Pilih Outlet", 
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
-                                  filled: true,
-                                  fillColor: colorScheme.surfaceVariant.withOpacity(0.3),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                                ),
-                                baseStyle: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
-                              ),
-                              validator: (value) => value == null ? "Outlet harus dipilih" : null,
-                            ),
-                      _buildTextFieldWithController(_idOutletController, "ID Outlet", readOnly: true),
-                      _buildTextFieldWithController(_regionController, "Region", readOnly: true),
-                      _buildTextFieldWithController(_branchController, "Branch", readOnly: true),
-                      _buildTextFieldWithController(_clusterController, "Cluster/Area", readOnly: true),
-                      _buildTextFieldWithController(_hariController, "Hari Kunjungan", readOnly: true),
-                      _buildTextFieldWithController(_tokoController, "Tanggal Survei", readOnly: true, onTap: () async {
-                        DateTime? pickedDate = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.tryParse(_tokoController.text) ?? DateTime.now(),
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime(2101),
-                           builder: (context, child) {
-                             return Theme(
-                                data: theme.copyWith(
-                                  colorScheme: theme.colorScheme.copyWith(
-                                    primary: colorScheme.primary,
-                                    onPrimary: colorScheme.onPrimary,
-                                    surface: colorScheme.surface,
-                                    onSurface: colorScheme.onSurface,
-                                  ),
-                                  dialogBackgroundColor: theme.dialogTheme.backgroundColor ?? colorScheme.surface,
-                                ),
-                                child: child!,
-                              );
-                          }
-                        );
-                        if (pickedDate != null) {
-                          _tokoController.text = DateFormat("yyyy-MM-dd").format(pickedDate);
-                        }
-                      }),
-                      _buildTextFieldWithController(_keteranganController, "Keterangan Kunjungan", keyboardType: TextInputType.multiline, validator: (value) => value == null || value.isEmpty ? "Keterangan tidak boleh kosong" : null),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text("Jenis Survei", style: textTheme.headlineSmall?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: DropdownButtonFormField<String>(
-                    decoration: InputDecoration(
-                      labelText: "Pilih Jenis Survei", 
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
-                      filled: true,
-                      fillColor: colorScheme.surfaceVariant.withOpacity(0.3),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                    ),
-                    style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
-                    value: _selectedBrandinganOption,
-                    items: _brandinganOptions.map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value, style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface)),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        _selectedBrandinganOption = newValue;
-                        if (newValue == "Survei harga") {
-                          _initializeFixedSurveyHarga();
-                        } else {
-                          _operatorSurveyGroups.clear();
-                          _hargaEntryControllersMap.clear();
-                          _totalHargaEntriesCount = 0;
-                        }
-                      });
-                    },
-                    validator: (value) => value == null ? "Jenis survei harus dipilih" : null,
-                  ),
-                ),
-              ),
-              if (_selectedBrandinganOption == "Survei branding") ...[
-                const SizedBox(height: 24),
-                Text("Upload Gambar Branding", style: textTheme.headlineSmall?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        _buildImagePickerButton("Foto Etalase Branding", _brandingImageEtalase, () => _pickImage(ImageSource.camera, (file) => setState(() => _brandingImageEtalase = file))),
-                        const SizedBox(height: 16),
-                        _buildImagePickerButton("Foto Tampak Depan Toko", _brandingImageTampakDepan, () => _pickImage(ImageSource.camera, (file) => setState(() => _brandingImageTampakDepan = file))),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-              if (_selectedBrandinganOption == "Survei harga") ...[
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Stack(
                   children: [
-                    Text("Detail Survei Harga", style: textTheme.headlineSmall?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold)),
-                    Text("Total Entri: $_totalHargaEntriesCount/$_maxHargaEntries", style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant)),
+                    _isLoadingOutlets && _outlets.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 50.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(color: theme.colorScheme.primary),
+                                  const SizedBox(height: 15),
+                                  Text("Memuat data outlet...", style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7))),
+                                ],
+                              ),
+                            ),
+                          )
+                        : Form(
+                            key: _formKey,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildTextField(controller: _namaController, label: 'Nama Surveyor', readOnly: true),
+                                const SizedBox(height: 16),
+                                _buildTextField(controller: _regionController, label: 'Wilayah', readOnly: true),
+                                const SizedBox(height: 16),
+                                _buildTextField(controller: _branchController, label: 'Cabang', readOnly: true),
+                                const SizedBox(height: 16),
+                                _buildTextField(controller: _clusterController, label: 'Klaster', readOnly: true),
+                                const SizedBox(height: 16),
+                                _buildTextField(controller: _hariController, label: 'Hari Kunjungan (Outlet)', readOnly: true),
+                                const SizedBox(height: 16),
+
+                                DropdownSearch<Map<String, dynamic>>(
+                                  popupProps: PopupProps.menu(
+                                    showSearchBox: true,
+                                    searchFieldProps: TextFieldProps(
+                                      style: theme.textTheme.bodyLarge,
+                                      decoration: InputDecoration(
+                                        hintText: "Cari nama outlet...",
+                                        prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
+                                      ),
+                                    ),
+                                    menuProps: MenuProps(backgroundColor: theme.cardColor, elevation: 4, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                                    constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+                                    emptyBuilder: (context, searchEntry) => Center(child: Padding(padding: const EdgeInsets.all(16.0), child: Text("Outlet tidak ditemukan", style: theme.textTheme.bodyMedium))),
+                                    errorBuilder: (context, searchEntry, exception) => Center(child: Padding(padding: const EdgeInsets.all(16.0), child: Text("Gagal memuat outlet", style: theme.textTheme.bodyMedium))),
+                                    loadingBuilder: (context, searchEntry) => Center(child: CircularProgressIndicator(color: theme.colorScheme.primary, strokeWidth: 2)),
+                                  ),
+                                  items: _outlets,
+                                  itemAsString: (outlet) => outlet['nama_outlet']?.toString() ?? 'Outlet Tidak Dikenal',
+                                  selectedItem: _selectedOutlet,
+                                  dropdownDecoratorProps: DropDownDecoratorProps(
+                                    dropdownSearchDecoration: InputDecoration(
+                                      labelText: "Pilih Outlet *",
+                                      hintText: _outlets.isEmpty && !_isLoadingOutlets ? "Tidak ada data outlet" : "Pilih outlet lainnya...",
+                                      prefixIcon: Icon(Icons.store, color: theme.colorScheme.primary),
+                                    ),
+                                    baseStyle: theme.textTheme.bodyLarge,
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedOutlet = value;
+                                      if (value != null) {
+                                        _idOutletController.text = value['id_outlet']?.toString() ?? '';
+                                        _regionController.text = value['region'] ?? '';
+                                        _branchController.text = value['branch'] ?? '';
+                                        _clusterController.text = value['cluster'] ?? value['area'] ?? '';
+                                        _hariController.text = value['hari'] ?? '';
+                                      } else {
+                                        _idOutletController.clear();
+                                        _regionController.clear();
+                                        _branchController.clear();
+                                        _clusterController.clear();
+                                        _hariController.clear();
+                                      }
+                                    });
+                                  },
+                                  validator: (value) => value == null ? 'Silakan pilih outlet' : null,
+                                  enabled: !_isLoadingOutlets && _outlets.isNotEmpty && !_isSubmitting,
+                                ),
+                                const SizedBox(height: 16),
+                                _buildTextField(controller: _idOutletController, label: 'ID Outlet', readOnly: true),
+                                const SizedBox(height: 16),
+                                _buildTextField(controller: _tokoController, label: 'Tanggal Survei', readOnly: true),
+                                const SizedBox(height: 16),
+
+                                DropdownButtonFormField<String>(
+                                  isExpanded: true,
+                                  value: _selectedBrandinganOption,
+                                  hint: Text("Pilih Jenis Survei", style: theme.textTheme.bodyLarge?.copyWith(color: theme.hintColor)),
+                                  style: theme.textTheme.bodyLarge,
+                                  decoration: InputDecoration(
+                                    labelText: 'Jenis Survei *',
+                                    prefixIcon: Icon(Icons.assessment, color: theme.colorScheme.primary),
+                                  ),
+                                  items: _brandinganOptions.map((option) => DropdownMenuItem<String>(value: option, child: Text(option, style: theme.textTheme.bodyLarge))).toList(),
+                                  onChanged: _isSubmitting ? null : (value) {
+                                    setState(() {
+                                      _selectedBrandinganOption = value;
+                                      _brandingImageEtalase = null;
+                                      _brandingImageTampakDepan = null;
+                                      if (value == "Survei harga") {
+                                        _initializeFixedSurveyHarga();
+                                      } else {
+                                        _operatorSurveyGroups.clear();
+                                        _hargaEntryControllersMap.values.forEach((map) => map.values.forEach((c) => c.dispose()));
+                                        _hargaEntryControllersMap.clear();
+                                        _totalHargaEntriesCount = 0;
+                                      }
+                                    });
+                                  },
+                                  validator: (value) => (value == null || value.isEmpty) ? 'Silakan pilih jenis survei' : null,
+                                  dropdownColor: theme.cardColor,
+                                ),
+                                const SizedBox(height: 20),
+
+                                if (_selectedBrandinganOption == "Survei branding") ...[
+                                  _buildImagePicker(label: "Foto Etalase *", image: _brandingImageEtalase, disabled: _isSubmitting, onPick: () => _pickImage(ImageSource.camera, (file) => _brandingImageEtalase = file), onRetake: () => _pickImage(ImageSource.camera, (file) => _brandingImageEtalase = file)),
+                                  const SizedBox(height: 16),
+                                  _buildImagePicker(label: "Foto Tampak Depan *", image: _brandingImageTampakDepan, disabled: _isSubmitting, onPick: () => _pickImage(ImageSource.camera, (file) => _brandingImageTampakDepan = file), onRetake: () => _pickImage(ImageSource.camera, (file) => _brandingImageTampakDepan = file)),
+                                  const SizedBox(height: 16),
+                                ],
+
+                                if (_selectedBrandinganOption == "Survei harga") ...[
+                                  AbsorbPointer(
+                                    absorbing: _isSubmitting,
+                                    child: ListView.builder(
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      itemCount: _operatorSurveyGroups.length,
+                                      itemBuilder: (context, groupIndex) {
+                                        final group = _operatorSurveyGroups[groupIndex];
+                                        bool isHidden = group["isHidden"];
+                                        List entries = group["entries"];
+                                        String operatorName = group["operator"];
+                                        return Card(
+                                          margin: const EdgeInsets.symmetric(vertical: 8.0),
+                                          elevation: 2,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(12.0),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Expanded(child: Text(operatorName, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
+                                                    TextButton.icon(
+                                                      icon: Icon(isHidden ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20, color: theme.colorScheme.onSurface.withOpacity(0.7)),
+                                                      label: Text(isHidden ? 'Tampilkan' : 'Sembunyikan', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7))),
+                                                      onPressed: _isSubmitting ? null : () => _toggleGroupVisibility(groupIndex),
+                                                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), tapTargetSize: MaterialTapTargetSize.shrinkWrap, minimumSize: const Size(0, 30)),
+                                                    ),
+                                                  ],
+                                                ),
+                                                if (!isHidden) ...[
+                                                  const Divider(thickness: 1, height: 20),
+                                                  DropdownButtonFormField<String>(
+                                                    validator: null, 
+                                                    value: group["paket"],
+                                                    hint: Text("Pilih Jenis Paket", style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor)),
+                                                    style: theme.textTheme.bodyMedium,
+                                                    decoration: InputDecoration(
+                                                      labelText: 'Jenis Paket *',
+                                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.7))),
+                                                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.7))),
+                                                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5)),
+                                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                                      labelStyle: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.6)),
+                                                    ),
+                                                    items: _paketOptions.map((option) => DropdownMenuItem<String>(value: option, child: Text(option, style: theme.textTheme.bodyMedium))).toList(),
+                                                    onChanged: _isSubmitting ? null : (value) => setState(() => group["paket"] = value),
+                                                    dropdownColor: theme.cardColor,
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  ListView.builder(
+                                                    shrinkWrap: true,
+                                                    physics: const NeverScrollableScrollPhysics(),
+                                                    itemCount: entries.length,
+                                                    itemBuilder: (context, entryIndex) {
+                                                      HargaEntryControllers? controllers = _hargaEntryControllersMap[groupIndex]?[entryIndex];
+                                                      return Padding(
+                                                        padding: const EdgeInsets.symmetric(vertical: 6.0),
+                                                        child: Column( 
+                                                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                          children: [
+                                                            _buildTextField(controller: controllers!.namaPaketController, label: 'Nama Paket', hint: 'Cth: HotRod 2GB', validator: null, inputFormatters: [LengthLimitingTextInputFormatter(50)], readOnly: _isSubmitting),
+                                                            const SizedBox(height: 8), 
+                                                            _buildTextField(
+                                                              controller: controllers.hargaController, 
+                                                              label: 'Harga (Rp)', 
+                                                              hint: 'Cth: 25000',
+                                                              keyboardType: TextInputType.number,
+                                                              inputFormatters: [
+                                                                FilteringTextInputFormatter.digitsOnly, // Still allow only digits initially
+                                                                CurrencyInputFormatter(), // Then format
+                                                                LengthLimitingTextInputFormatter(12), // Max 9 digits + 3 separators
+                                                              ],
+                                                              validator: null, 
+                                                              readOnly: _isSubmitting
+                                                            ),
+                                                            const SizedBox(height: 8), 
+                                                            _buildTextField(controller: controllers.jumlahController, label: 'Jumlah', hint: 'Cth: 10', keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(3)], validator: null, readOnly: _isSubmitting),
+                                                            if (entries.length > 1) 
+                                                              Align(
+                                                                alignment: Alignment.centerRight,
+                                                                child: IconButton(icon: Icon(Icons.remove_circle_outline, color: AppSemanticColors.danger(context)), onPressed: _isSubmitting ? null : () => _removeHargaEntry(groupIndex, entryIndex), tooltip: 'Hapus Entri'),
+                                                              ) 
+                                                            else 
+                                                              const SizedBox(height: 48), 
+                                                          ],
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                  if (canAddMoreHarga) TextButton.icon(icon: Icon(Icons.add_circle_outline, color: theme.colorScheme.primary), label: Text('Tambah Data Paket', style: TextStyle(color: theme.colorScheme.primary)), onPressed: _isSubmitting ? null : () => _addHargaEntry(groupIndex)),
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  if (!canAddMoreHarga) Padding(padding: const EdgeInsets.only(top: 8.0, bottom: 8.0), child: Row(children: [Icon(Icons.info_outline, color: AppSemanticColors.warning(context), size: 16), const SizedBox(width: 8), Expanded(child: Text("Batas maksimal $_maxHargaEntries data paket telah tercapai.", style: theme.textTheme.bodySmall?.copyWith(color: AppSemanticColors.warning(context), fontStyle: FontStyle.italic)))])),
+                                  const SizedBox(height: 16),
+                                ],
+
+                                _buildTextField(controller: _keteranganController, label: 'Keterangan Kunjungan *', hint: 'Masukkan detail atau catatan penting...', maxLines: 5, readOnly: _isSubmitting, validator: (value) {
+                                  if (value == null || value.trim().isEmpty) return 'Keterangan kunjungan wajib diisi';
+                                  if (value.trim().length < 10) return 'Keterangan terlalu pendek (min. 10 karakter)';
+                                  return null;
+                                }),
+                                const SizedBox(height: 24),
+
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: _isSubmitting ? null : () => _submitForm(),
+                                    style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      backgroundColor: theme.colorScheme.primary,
+                                      disabledBackgroundColor: theme.disabledColor,
+                                    ),
+                                    child: _isSubmitting
+                                        ? SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.onPrimary)))
+                                        : Text('Kirim Data Survei', style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.onPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                    if (_isSubmitting) Positioned.fill(child: Container(decoration: BoxDecoration(color: theme.colorScheme.scrim.withOpacity(0.5), borderRadius: BorderRadius.circular(16)), child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.onPrimary)), const SizedBox(height: 15), Text("Mengirim data...", style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.bold))])))),
                   ],
                 ),
-                const SizedBox(height: 8),
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _operatorSurveyGroups.length,
-                  itemBuilder: (context, groupIndex) {
-                    // MODIFIED: Pass theme to _buildOperatorGroupCard
-                    return _buildOperatorGroupCard(groupIndex, theme);
-                  },
-                ),
-              ],
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                icon: _isSubmitting ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: colorScheme.onPrimary)) : const Icon(Icons.send),
-                label: Text(_isSubmitting ? "Mengirim..." : "Kirim Survei"),
-                onPressed: _isSubmitting ? null : _submitForm,
-                 style: ElevatedButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: colorScheme.onPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  textStyle: textTheme.labelLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.bold),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
               ),
-            ],
+            ),
           ),
         ),
       ),

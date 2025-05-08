@@ -9,7 +9,7 @@ final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 void main() async { // Added async
   WidgetsFlutterBinding.ensureInitialized();
-  // SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky); // This might be better handled by theme or per-page
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky); // This might be better handled by theme or per-page
   // It's generally recommended to initialize providers at the top level.
   // SharedPreferences initialization is handled within ThemeNotifier, so no need to await here explicitly for that.
   runApp(
