@@ -651,8 +651,7 @@ class _EditFormPageState extends State<EditFormPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Edit Survei: ${widget.outletName}", style: TextStyle(color: colorScheme.onPrimary)),
-        backgroundColor: colorScheme.primary,
+        title: Text("Edit Survei: ${widget.outletName}", style: textTheme.titleLarge?.copyWith(color: colorScheme.onPrimary)),
         iconTheme: IconThemeData(color: colorScheme.onPrimary),
       ),
       body: SingleChildScrollView(
