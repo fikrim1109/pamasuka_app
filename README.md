@@ -1,1 +1,1 @@
-test
+Samalonian app
