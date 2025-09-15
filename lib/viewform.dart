@@ -64,7 +64,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
     }
 
     final url = Uri.https(
-      "tunnel.jato.my.id",
+      "android.samalonian.my.id",
       "/test api/get_survey_forms.php",
       {"outlet_nama": widget.outletName, "user_id": widget.userId.toString()},
     );
@@ -200,7 +200,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
     }
     final ThemeData theme = Theme.of(context); // For SnackBar styling
 
-    final url = Uri.https("tunnel.jato.my.id", "/test api/delete_survey.php");
+    final url = Uri.https("android.samalonian.my.id", "/test api/delete_survey.php");
     try {
       final response = await http.post(
         url,
@@ -403,7 +403,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
         formattedDate = "Format Tanggal Salah: $rawDate";
       }
     }
-    final String surveyor = form["username"] ?? "Surveyor tidak diketahui";
+    final String surveyor = "${widget.outletName}" ;
     final String keterangan = form["keterangan_kunjungan"] ?? "Tidak ada keterangan.";
     final int surveyId = form["id"] ?? 0;
 

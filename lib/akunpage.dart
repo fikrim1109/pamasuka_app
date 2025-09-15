@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pamasuka/app_theme.dart'; // Import AppTheme
 
-const String _apiBaseUrl = 'https://tunnel.jato.my.id/test%20api';
+const String _apiBaseUrl = 'https://android.samalonian.my.id/test%20api';
 
 class AkunPage extends StatefulWidget {
   final int userId;

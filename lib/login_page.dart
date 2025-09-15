@@ -7,7 +7,7 @@ import "package:pamasuka/menu_page.dart";
 import "package:pamasuka/lupapage.dart";
 import "package:pamasuka/app_theme.dart"; // Import AppTheme
 
-const String _apiBaseUrl = "https://tunnel.jato.my.id/test%20api";
+const String _apiBaseUrl = "https://android.samalonian.my.id/test%20api";
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});

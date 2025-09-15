@@ -7,7 +7,7 @@ import "package:http/http.dart" as http;
 import "package:pamasuka/login_page.dart"; // For navigation back to login
 import "package:pamasuka/app_theme.dart"; // Import AppTheme
 
-const String _apiBaseUrl = "https://tunnel.jato.my.id/test%20api";
+const String _apiBaseUrl = "https://android.samalonian.my.id/test%20api";
 
 enum ForgotPasswordStep { enterUsername, answerQuestion, resetPassword }
 

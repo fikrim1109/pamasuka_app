@@ -91,7 +91,7 @@ class _MenuPageState extends State<MenuPage> with RouteAware {
     });
 
     final url = Uri.https(
-      "tunnel.jato.my.id",
+      "android.samalonian.my.id",
       "/test api/get_user_telkomsel_performance.php",
       {"user_id": widget.userId.toString()},
     );
