@@ -12,6 +12,7 @@ import "package:pamasuka/main.dart"; // For routeObserver
 import "package:pamasuka/app_theme.dart"; // Import AppTheme
 import "package:provider/provider.dart"; // Import Provider
 import "package:pamasuka/theme_provider.dart"; // Import ThemeNotifier
+import 'package:shared_preferences/shared_preferences.dart';
 
 const int MIN_NORMAL_USER_ID_RANGE = 6;
 const int MAX_NORMAL_USER_ID_RANGE = 784;
@@ -416,8 +417,11 @@ class BottomNavBar extends StatelessWidget {
             child: const Text("Batal"),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
+            onPressed: () async {
+              Navigator.pop(context); 
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove('username');
+              await prefs.remove('userId');
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (context) => const LoginPage()),

@@ -6,6 +6,7 @@ import "package:http/http.dart" as http;
 import "package:pamasuka/menu_page.dart";
 import "package:pamasuka/lupapage.dart";
 import "package:pamasuka/app_theme.dart"; // Import AppTheme
+import 'package:shared_preferences/shared_preferences.dart'; // Tambahan untuk SharedPrefs
 
 const String _apiBaseUrl = "https://android.samalonian.my.id/test%20api";
 
@@ -75,9 +76,15 @@ class _LoginPageState extends State<LoginPage> {
           final data = json.decode(response.body);
           if (data["success"] is bool && data["success"] == true) {
             final String responseUsername = data["username"]?.toString() ?? "Pengguna";
-            final int userId = data["userId"] is int
+            final int userId = data["userId"] is int  // Map 'id' dari tabel ke 'userId' di response
                 ? data["userId"]
                 : int.tryParse(data["userId"]?.toString() ?? "") ?? 0;
+
+            // Save session ke SharedPrefs (sesuai tabel: id -> userId, username)
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('username', responseUsername);
+            await prefs.setInt('userId', userId);
+            print("Session saved: username=$responseUsername, userId=$userId");  // Debug
 
             if (!mounted) return;
 
@@ -128,6 +135,33 @@ class _LoginPageState extends State<LoginPage> {
         setState(() { _isLoading = false; });
       }
     }
+  }
+
+  // Tambahan: Cek saved session pas app start
+  Future<void> _checkSavedSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedUsername = prefs.getString('username');
+    final savedUserId = prefs.getInt('userId');
+    if (savedUsername != null && savedUserId != null && savedUserId > 0) {
+      print("Session loaded: username=$savedUsername, userId=$savedUserId");  // Debug
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MenuPage(
+              username: savedUsername,
+              userId: savedUserId,
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSavedSession();  // Cek session pas init
   }
 
   @override
@@ -280,4 +314,3 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-
