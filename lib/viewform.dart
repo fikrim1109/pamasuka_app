@@ -1,12 +1,11 @@
 // File: lib/viewform.dart
-import "dart:convert"; // For json operations
+import "dart:convert";
 import "package:flutter/material.dart";
-import "package:http/http.dart" as http; // For network requests
-import "package:intl/intl.dart"; // For date and number formatting
-import "package:intl/date_symbol_data_local.dart"; // For date locale data
-// import "package:google_fonts/google_fonts.dart"; // Replaced by Theme
-import "package:pamasuka/EditFormPage.dart"; 
-import "package:pamasuka/app_theme.dart"; // Import AppTheme
+import "package:http/http.dart" as http;
+import "package:intl/intl.dart";
+import "package:intl/date_symbol_data_local.dart";
+import "package:pamasuka/EditFormPage.dart";
+import "package:pamasuka/app_theme.dart";
 
 class ViewFormPage extends StatefulWidget {
   final String outletName;
@@ -25,16 +24,14 @@ class _ViewFormPageState extends State<ViewFormPage> {
   String? _errorMessage;
   final PageController _pageController = PageController();
 
-  // Removed: final Color primaryColor = const Color(0xFFC0392B);
-
   final Map<String, String> operatorDisplayMap = {
     "TELKOMSEL": "Telkomsel",
     "XL": "XL",
-    "INDOSAT": "Indosat", // Assuming INDOSAT OOREDOO is shortened to INDOSAT in data
+    "INDOSAT": "Indosat",
     "INDOSAT OOREDOO": "Indosat Ooredoo",
     "AXIS": "Axis",
     "SMARTFREN": "Smartfren",
-    "TRI": "Tri", // Assuming 3 is TRI
+    "TRI": "Tri",
     "3": "3",
   };
 
@@ -63,9 +60,10 @@ class _ViewFormPageState extends State<ViewFormPage> {
       return;
     }
 
+    // --- [FIXED 1] Nama file PHP disesuaikan dengan yang sudah kita perbaiki ---
     final url = Uri.https(
       "android.samalonian.my.id",
-      "/test api/get_survey_forms.php",
+      "/test api/get_survey_forms.php", 
       {"outlet_nama": widget.outletName, "user_id": widget.userId.toString()},
     );
 
@@ -88,10 +86,10 @@ class _ViewFormPageState extends State<ViewFormPage> {
           for (var rawForm in rawForms) {
             if (rawForm is! Map<String, dynamic>) continue;
             Map<String, dynamic> processedForm = Map.from(rawForm);
-            final formIdForLog = processedForm["id"] ?? "UNKNOWN_ID";
-
+            
             if (processedForm["jenis_survei"] == "Survei harga") {
-              final String? dataHargaString = processedForm["data_harga"]?.toString();
+              // --- [FIXED 2] Kunci JSON diubah menjadi 'data_harga_json' ---
+              final String? dataHargaString = processedForm["data_harga_json"]?.toString();
               Map<String, double> voucherPercentages = {};
               Map<String, double> perdanaPercentages = {};
               int totalVoucherCount = 0;
@@ -107,12 +105,11 @@ class _ViewFormPageState extends State<ViewFormPage> {
 
                     for (var operatorDataRaw in parsedPriceData) {
                       if (operatorDataRaw is Map<String, dynamic>) {
-                        final String? operatorNameFromJsonRaw = operatorDataRaw["operator"]?.toString();
-                        final String operatorNameFromJson = operatorNameFromJsonRaw?.toUpperCase() ?? "";
-                        final String? packageTypeRaw = operatorDataRaw["paket"]?.toString();
-                        final String packageType = packageTypeRaw?.toUpperCase() ?? "";
+                        final String operatorNameFromJson = (operatorDataRaw["operator"]?.toString() ?? "").toUpperCase();
+                        final String packageType = (operatorDataRaw["paket"]?.toString() ?? "").toUpperCase();
                         final List<dynamic> entriesRaw = operatorDataRaw["entries"] ?? [];
-                        final String operatorDisplayName = operatorDisplayMap[operatorNameFromJson] ?? operatorNameFromJsonRaw ?? "Unknown Operator";
+                        final String operatorDisplayName = operatorDisplayMap[operatorNameFromJson] ?? operatorDataRaw["operator"]?.toString() ?? "Unknown";
+                        
                         operatorDisplayNames.add(operatorDisplayName);
                         voucherCounts.putIfAbsent(operatorDisplayName, () => 0);
                         perdanaCounts.putIfAbsent(operatorDisplayName, () => 0);
@@ -136,9 +133,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
                       perdanaPercentages[opDisplayName] = (totalPerdanaCount > 0) ? (perdanaCounts[opDisplayName]! / totalPerdanaCount) * 100 : 0.0;
                     }
                   }
-                } catch (e) {
-                  // Error pre-calculating percentages
-                }
+                } catch (e) { /* Gagal kalkulasi, biarkan kosong */ }
               }
               processedForm["calculated_voucher_percentages"] = voucherPercentages;
               processedForm["calculated_perdana_percentages"] = perdanaPercentages;
@@ -149,11 +144,8 @@ class _ViewFormPageState extends State<ViewFormPage> {
           }
 
           processedForms.sort((a, b) {
-            final dateAString = a["tanggal_survei"]?.toString();
-            final dateBString = b["tanggal_survei"]?.toString();
-            DateTime? dateA = DateTime.tryParse(dateAString ?? "");
-            DateTime? dateB = DateTime.tryParse(dateBString ?? "");
-            if (dateA == null && dateB == null) return 0;
+            DateTime? dateA = DateTime.tryParse(a["tanggal_survei"]?.toString() ?? "");
+            DateTime? dateB = DateTime.tryParse(b["tanggal_survei"]?.toString() ?? "");
             if (dateA == null) return 1;
             if (dateB == null) return -1;
             return dateB.compareTo(dateA);
@@ -171,8 +163,6 @@ class _ViewFormPageState extends State<ViewFormPage> {
                 if (_pageController.page?.round() != targetPage) {
                   _pageController.jumpToPage(targetPage);
                 }
-              } else if (_forms.isEmpty && _pageController.hasClients) {
-                _pageController.jumpToPage(0);
               }
             });
           }
@@ -198,7 +188,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
     } else {
       return;
     }
-    final ThemeData theme = Theme.of(context); // For SnackBar styling
+    final ThemeData theme = Theme.of(context);
 
     final url = Uri.https("android.samalonian.my.id", "/test api/delete_survey.php");
     try {
@@ -248,10 +238,8 @@ class _ViewFormPageState extends State<ViewFormPage> {
     final TextTheme textTheme = theme.textTheme;
 
     return Scaffold(
-      // backgroundColor: theme.scaffoldBackgroundColor, // Handled by theme
       appBar: AppBar(
         title: Text("Riwayat Survei: ${widget.outletName}", style: textTheme.titleLarge?.copyWith(color: colorScheme.onPrimary)),
-        // centerTitle, backgroundColor, foregroundColor, elevation, shadowColor handled by theme.appBarTheme
       ),
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
@@ -260,33 +248,20 @@ class _ViewFormPageState extends State<ViewFormPage> {
       floatingActionButton: FloatingActionButton(
         onPressed: _isLoading ? null : () => _fetchForms(),
         tooltip: "Muat Ulang Data",
-        // backgroundColor: colorScheme.primary, // Handled by theme.floatingActionButtonTheme
-        child: (_isLoading && _forms.isEmpty)
-            ? SizedBox(
+        child: _isLoading
+            ? const SizedBox(
                 width: 24,
                 height: 24,
-                child: CircularProgressIndicator(
-                  // color: colorScheme.onPrimary, // Handled by theme
-                  strokeWidth: 2,
-                ),
+                child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
               )
-            : _isLoading
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      // color: colorScheme.onPrimary, // Handled by theme
-                      strokeWidth: 2.5,
-                    ),
-                  )
-                : Icon(Icons.refresh, color: colorScheme.onPrimary), // Ensure icon color contrasts with FAB background
+            : Icon(Icons.refresh, color: colorScheme.onPrimary),
       ),
     );
   }
 
   Widget _buildBody(ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
     if (_isLoading && _forms.isEmpty) {
-      return Center(child: CircularProgressIndicator()); // Color handled by theme
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_errorMessage != null) {
@@ -294,35 +269,21 @@ class _ViewFormPageState extends State<ViewFormPage> {
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Card(
-            // elevation, shape handled by theme.cardTheme
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.error_outline,
-                    color: AppSemanticColors.danger(context), // Use semantic color
-                    size: 50,
-                  ),
+                  Icon(Icons.error_outline, color: AppSemanticColors.danger(context), size: 50),
                   const SizedBox(height: 15),
-                  Text(
-                    "Gagal Memuat Data",
-                    style: textTheme.headlineSmall?.copyWith(color: colorScheme.primary),
-                    textAlign: TextAlign.center,
-                  ),
+                  Text("Gagal Memuat Data", style: textTheme.headlineSmall?.copyWith(color: colorScheme.primary), textAlign: TextAlign.center),
                   const SizedBox(height: 10),
-                  Text(
-                    _errorMessage!,
-                    textAlign: TextAlign.center,
-                    style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant),
-                  ),
+                  Text(_errorMessage!, textAlign: TextAlign.center, style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant)),
                   const SizedBox(height: 20),
                   ElevatedButton.icon(
                     onPressed: _isLoading ? null : () => _fetchForms(),
-                    icon: Icon(Icons.refresh, color: colorScheme.onPrimary), // Ensure icon color contrasts
-                    label: Text("Coba Lagi", style: TextStyle(color: colorScheme.onPrimary)), // Ensure text color contrasts
-                    // style handled by theme.elevatedButtonTheme
+                    icon: Icon(Icons.refresh, color: colorScheme.onPrimary),
+                    label: Text("Coba Lagi", style: TextStyle(color: colorScheme.onPrimary)),
                   ),
                 ],
               ),
@@ -339,11 +300,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
           children: [
             Icon(Icons.inbox_outlined, size: 60, color: colorScheme.onSurfaceVariant),
             const SizedBox(height: 15),
-            Text(
-              "Tidak ada data survei ditemukan\nuntuk outlet ini.",
-              textAlign: TextAlign.center,
-              style: textTheme.titleLarge?.copyWith(color: colorScheme.onSurfaceVariant),
-            ),
+            Text("Tidak ada data survei ditemukan\nuntuk outlet ini.", textAlign: TextAlign.center, style: textTheme.titleLarge?.copyWith(color: colorScheme.onSurfaceVariant)),
           ],
         ),
       );
@@ -372,19 +329,12 @@ class _ViewFormPageState extends State<ViewFormPage> {
         Expanded(
           child: PageView.builder(
             controller: _pageController,
-            itemCount: _forms.isEmpty ? 1 : _forms.length, // Handle empty case for PageView
+            itemCount: _forms.length,
             onPageChanged: (index) {
-              if (mounted) {
-                setState(() => _currentIndex = index);
-              }
+              if (mounted) setState(() => _currentIndex = index);
             },
             itemBuilder: (context, index) {
-              if (_forms.isEmpty) {
-                // This should ideally not be reached if the empty check above works
-                return Center(child: Text("Tidak ada data untuk ditampilkan", style: textTheme.bodyLarge));
-              }
-              final form = _forms[index];
-              return _buildFormCard(form, theme, colorScheme, textTheme);
+              return _buildFormCard(_forms[index], theme, colorScheme, textTheme);
             },
           ),
         ),
@@ -395,22 +345,20 @@ class _ViewFormPageState extends State<ViewFormPage> {
   Widget _buildFormCard(Map<String, dynamic> form, ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
     final String jenisSurvei = form["jenis_survei"] ?? "Tidak diketahui";
     String formattedDate = "Tanggal tidak tersedia";
-    final rawDate = form["tanggal_survei"]?.toString();
-    if (rawDate != null && rawDate.isNotEmpty) {
+    if (form["tanggal_survei"] != null) {
       try {
-        formattedDate = DateFormat("EEEE, dd MMMM yyyy", "id_ID").format(DateTime.parse(rawDate));
+        formattedDate = DateFormat("EEEE, dd MMMM yyyy", "id_ID").format(DateTime.parse(form["tanggal_survei"]));
       } catch (e) {
-        formattedDate = "Format Tanggal Salah: $rawDate";
+        formattedDate = "Format Tanggal Salah";
       }
     }
-    final String surveyor = "${widget.outletName}" ;
+    final String surveyor = form["outlet_nama"] ?? widget.outletName;
     final String keterangan = form["keterangan_kunjungan"] ?? "Tidak ada keterangan.";
     final int surveyId = form["id"] ?? 0;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Card(
-        // elevation, shape handled by theme.cardTheme
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -418,12 +366,10 @@ class _ViewFormPageState extends State<ViewFormPage> {
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      jenisSurvei,
-                      style: textTheme.headlineSmall?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold),
-                    ),
+                    child: Text(jenisSurvei, style: textTheme.headlineSmall?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold)),
                   ),
                   if (surveyId > 0)
                     Row(
@@ -434,17 +380,9 @@ class _ViewFormPageState extends State<ViewFormPage> {
                           onPressed: () async {
                             final result = await Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                builder: (context) => EditFormPage(
-                                  userId: widget.userId,
-                                  outletName: widget.outletName,
-                                  formData: form, // Pass the whole form data
-                                ),
-                              ),
+                              MaterialPageRoute(builder: (context) => EditFormPage(userId: widget.userId, outletName: widget.outletName, formData: form)),
                             );
-                            if (result == true && mounted) {
-                              _fetchForms(); // Refresh if edit was successful
-                            }
+                            if (result == true && mounted) _fetchForms();
                           },
                         ),
                         IconButton(
@@ -458,11 +396,10 @@ class _ViewFormPageState extends State<ViewFormPage> {
               ),
               const SizedBox(height: 4),
               Text(formattedDate, style: textTheme.titleMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
-              Text("Surveyor: $surveyor", style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
+              Text("Nama Outlet: $surveyor", style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
               const SizedBox(height: 12),
               Text("Keterangan Kunjungan:", style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
               Text(keterangan, style: textTheme.bodyLarge),
-              const SizedBox(height: 16),
               if (jenisSurvei == "Survei branding") ..._buildBrandingSection(form, theme, colorScheme, textTheme),
               if (jenisSurvei == "Survei harga") ..._buildHargaSection(form, theme, colorScheme, textTheme),
             ],
@@ -475,14 +412,121 @@ class _ViewFormPageState extends State<ViewFormPage> {
   List<Widget> _buildBrandingSection(Map<String, dynamic> form, ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
     final String? fotoEtalaseUrl = form["foto_etalase_url"]?.toString();
     final String? fotoDepanUrl = form["foto_depan_url"]?.toString();
+    
+    final String? posterPromoJson = form['poster_promo_json'] as String?;
+    final String? layarTokoJson = form['layar_toko_json'] as String?;
+    final String? shopSignJson = form['shop_sign_json'] as String?;
+    final String? papanHargaJson = form['papan_harga_json'] as String?;
+    final String? fullBrandingOperator = form['full_branding_operator'] as String?;
+    final int? presentaseOutlet = form['presentase_outlet'] as int?;
 
     return [
+      const Divider(height: 24),
+      Text("Detail Branding:", style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+      const SizedBox(height: 8),
+
+      _buildBrandingDetailList("Poster Promo", posterPromoJson, theme, colorScheme, textTheme),
+      _buildBrandingDetailList("Layar Toko", layarTokoJson, theme, colorScheme, textTheme),
+      _buildBrandingDetailList("Shop Sign", shopSignJson, theme, colorScheme, textTheme),
+      _buildBrandingDetailList("Papan Harga", papanHargaJson, theme, colorScheme, textTheme),
+      _buildBrandingDetailRow("Outlet Full Branding", fullBrandingOperator, theme, colorScheme, textTheme),
+      if (presentaseOutlet != null)
+        _buildPercentageIndicator("Persentase Branding Telkomsel", presentaseOutlet, theme, colorScheme, textTheme),
+      
+      const Divider(height: 24),
       Text("Foto Branding:", style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
       const SizedBox(height: 8),
-      if (fotoEtalaseUrl != null && fotoEtalaseUrl.isNotEmpty) _buildImageDisplay("Foto Etalase", fotoEtalaseUrl, theme, colorScheme, textTheme) else Text("Foto Etalase tidak tersedia.", style: textTheme.bodyMedium),
+
+      if (fotoEtalaseUrl != null && fotoEtalaseUrl.isNotEmpty) 
+        _buildImageDisplay("Foto Etalase", fotoEtalaseUrl, theme, colorScheme, textTheme) 
+      else 
+        Text("Foto Etalase tidak tersedia.", style: textTheme.bodyMedium),
+      
       const SizedBox(height: 12),
-      if (fotoDepanUrl != null && fotoDepanUrl.isNotEmpty) _buildImageDisplay("Foto Tampak Depan", fotoDepanUrl, theme, colorScheme, textTheme) else Text("Foto Tampak Depan tidak tersedia.", style: textTheme.bodyMedium),
+      if (fotoDepanUrl != null && fotoDepanUrl.isNotEmpty) 
+        _buildImageDisplay("Foto Tampak Depan", fotoDepanUrl, theme, colorScheme, textTheme) 
+      else 
+        Text("Foto Tampak Depan tidak tersedia.", style: textTheme.bodyMedium),
     ];
+  }
+
+  Widget _buildBrandingDetailList(String title, String? jsonString, ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
+    List<String> items = [];
+    if (jsonString != null && jsonString.isNotEmpty && jsonString != '[]') {
+      try {
+        items = List<String>.from(json.decode(jsonString));
+      } catch (e) { /* Abaikan jika JSON tidak valid */ }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: 2, child: Text("$title:", style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600))),
+          Expanded(
+            flex: 3,
+            child: items.isEmpty
+                ? Text("Tidak Ada", style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant))
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: items.map((item) => Text("• $item", style: textTheme.bodyLarge)).toList(),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildBrandingDetailRow(String label, String? value, ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: 2, child: Text("$label:", style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600))),
+          Expanded(
+            flex: 3,
+            child: Text(
+              (value != null && value.isNotEmpty) ? value : "Tidak Ada",
+              style: textTheme.bodyLarge?.copyWith(
+                color: (value != null && value.isNotEmpty) ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildPercentageIndicator(String label, int percentage, ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("$label:", style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: percentage / 100.0,
+                    minHeight: 12,
+                    backgroundColor: colorScheme.surfaceVariant,
+                    valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text("$percentage%", style: textTheme.titleMedium?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildImageDisplay(String title, String imageUrl, ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
@@ -516,8 +560,9 @@ class _ViewFormPageState extends State<ViewFormPage> {
     );
   }
 
+  // --- [FIXED 3] Nama kunci diubah menjadi 'data_harga_json' saat membaca ---
   List<Widget> _buildHargaSection(Map<String, dynamic> form, ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
-    final String? dataHargaString = form["data_harga"]?.toString();
+    final String? dataHargaString = form["data_harga_json"]?.toString();
     List<dynamic> dataHarga = [];
     if (dataHargaString != null && dataHargaString.isNotEmpty && dataHargaString.trim().toLowerCase() != "null" && dataHargaString.trim() != "[]") {
       try {
@@ -528,16 +573,19 @@ class _ViewFormPageState extends State<ViewFormPage> {
     }
 
     if (dataHarga.isEmpty) {
-      return [Text("Tidak ada data harga untuk survei ini.", style: textTheme.bodyLarge)];
+      return [const SizedBox.shrink()];
     }
-
-    // Use pre-calculated percentages
+    
     final Map<String, double> voucherPercentages = form["calculated_voucher_percentages"] as Map<String, double>? ?? {};
     final Map<String, double> perdanaPercentages = form["calculated_perdana_percentages"] as Map<String, double>? ?? {};
     final int totalVoucherCount = form["calculated_total_voucher_count"] as int? ?? 0;
     final int totalPerdanaCount = form["calculated_total_perdana_count"] as int? ?? 0;
 
-    List<Widget> hargaWidgets = [Text("Detail Harga:", style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)), const SizedBox(height: 8)];
+    List<Widget> hargaWidgets = [
+      const Divider(height: 24),
+      Text("Detail Harga:", style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+      const SizedBox(height: 8)
+    ];
 
     for (var operatorDataRaw in dataHarga) {
       if (operatorDataRaw is! Map<String, dynamic>) continue;
@@ -559,15 +607,12 @@ class _ViewFormPageState extends State<ViewFormPage> {
                 final String namaPaket = entry["nama_paket"]?.toString() ?? "N/A";
                 String harga = entry["harga"]?.toString() ?? "N/A";
                 try {
-                  if (harga != "N/A" && harga.isNotEmpty) {
-                    final priceNum = int.parse(harga.replaceAll(".", ""));
-                    harga = NumberFormat("#,###", "id_ID").format(priceNum);
-                  }
-                } catch (e) { /* keep original if parsing fails */ }
+                  harga = NumberFormat("#,###", "id_ID").format(int.parse(harga.replaceAll(".", "")));
+                } catch (e) { /* biarkan harga asli jika gagal parsing */ }
                 final String jumlah = entry["jumlah"]?.toString() ?? "N/A";
                 return Padding(
                   padding: const EdgeInsets.only(left: 8.0, top: 2.0),
-                  child: Text("  • $namaPaket: Rp $harga (Jumlah: $jumlah)", style: textTheme.bodyMedium),
+                  child: Text("• $namaPaket: Rp $harga (Jumlah: $jumlah)", style: textTheme.bodyMedium),
                 );
               }).toList(),
             ],
@@ -576,7 +621,6 @@ class _ViewFormPageState extends State<ViewFormPage> {
       );
     }
     
-    // Display Percentages if available
     if (voucherPercentages.isNotEmpty || perdanaPercentages.isNotEmpty) {
       hargaWidgets.add(const SizedBox(height: 16));
       hargaWidgets.add(Text("Persentase Share Display:", style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)));
@@ -605,16 +649,15 @@ class _ViewFormPageState extends State<ViewFormPage> {
       context: context,
       builder: (BuildContext ctx) {
         return AlertDialog(
-          // title, contentTextStyle, actionsPadding handled by theme.dialogTheme
           title: Text("Konfirmasi Hapus", style: textTheme.titleLarge?.copyWith(color: AppSemanticColors.danger(context))),
           content: Text("Apakah Anda yakin ingin menghapus data survei ini? Tindakan ini tidak dapat diurungkan.", style: textTheme.bodyLarge),
           actions: <Widget>[
             TextButton(
-              child: Text("Batal", style: TextStyle(color: colorScheme.onSurface)), // Explicit color for contrast
+              child: Text("Batal", style: TextStyle(color: colorScheme.onSurface)),
               onPressed: () => Navigator.of(ctx).pop(),
             ),
             TextButton(
-              child: Text("Hapus", style: TextStyle(color: AppSemanticColors.danger(context))), // Explicit color for destructive action
+              child: Text("Hapus", style: TextStyle(color: AppSemanticColors.danger(context))),
               onPressed: () {
                 Navigator.of(ctx).pop();
                 _deleteForm(surveyId);
@@ -626,4 +669,3 @@ class _ViewFormPageState extends State<ViewFormPage> {
     );
   }
 }
-
