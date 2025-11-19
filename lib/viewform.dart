@@ -4,7 +4,7 @@ import "package:flutter/material.dart";
 import "package:http/http.dart" as http;
 import "package:intl/intl.dart";
 import "package:intl/date_symbol_data_local.dart";
-import "package:pamasuka/EditFormPage.dart";
+import "package:pamasuka/EditFormPage.dart"; 
 import "package:pamasuka/app_theme.dart";
 
 class ViewFormPage extends StatefulWidget {
@@ -60,7 +60,6 @@ class _ViewFormPageState extends State<ViewFormPage> {
       return;
     }
 
-    // --- [FIXED 1] Nama file PHP disesuaikan dengan yang sudah kita perbaiki ---
     final url = Uri.https(
       "android.samalonian.my.id",
       "/test api/get_survey_forms.php", 
@@ -88,7 +87,6 @@ class _ViewFormPageState extends State<ViewFormPage> {
             Map<String, dynamic> processedForm = Map.from(rawForm);
             
             if (processedForm["jenis_survei"] == "Survei harga") {
-              // --- [FIXED 2] Kunci JSON diubah menjadi 'data_harga_json' ---
               final String? dataHargaString = processedForm["data_harga_json"]?.toString();
               Map<String, double> voucherPercentages = {};
               Map<String, double> perdanaPercentages = {};
@@ -413,25 +411,54 @@ class _ViewFormPageState extends State<ViewFormPage> {
     final String? fotoEtalaseUrl = form["foto_etalase_url"]?.toString();
     final String? fotoDepanUrl = form["foto_depan_url"]?.toString();
     
+    // Data checklist lama
     final String? posterPromoJson = form['poster_promo_json'] as String?;
     final String? layarTokoJson = form['layar_toko_json'] as String?;
     final String? shopSignJson = form['shop_sign_json'] as String?;
     final String? papanHargaJson = form['papan_harga_json'] as String?;
+    
+    // Data checklist baru (diambil sebagai JSON String)
+    final String? wallBrandingJson = form['wall_branding'] as String?;
+    final String? stikerEtalaseJson = form['stiker_etalase'] as String?;
+    final String? kursiPlastikJson = form['kursi_plastik'] as String?;
+    final String? akrilikProdukJson = form['akrilik_produk'] as String?;
+    
     final String? fullBrandingOperator = form['full_branding_operator'] as String?;
-    final int? presentaseOutlet = form['presentase_outlet'] as int?;
+    final String? kategoriOutlet = form['kategori_outlet']?.toString();
+    
+    // Backward compatibility
+    final int? presentaseOutlet = int.tryParse(form['presentase_outlet']?.toString() ?? "");
 
     return [
       const Divider(height: 24),
-      Text("Detail Branding:", style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+      Text("Detail Branding (Checklist):", style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
       const SizedBox(height: 8),
 
-      _buildBrandingDetailList("Poster Promo", posterPromoJson, theme, colorScheme, textTheme),
-      _buildBrandingDetailList("Layar Toko", layarTokoJson, theme, colorScheme, textTheme),
-      _buildBrandingDetailList("Shop Sign", shopSignJson, theme, colorScheme, textTheme),
-      _buildBrandingDetailList("Papan Harga", papanHargaJson, theme, colorScheme, textTheme),
+      _buildBrandingDetailList("1. Poster Promo", posterPromoJson, theme, colorScheme, textTheme),
+      _buildBrandingDetailList("2. Layar Toko", layarTokoJson, theme, colorScheme, textTheme),
+      _buildBrandingDetailList("3. Shop Sign", shopSignJson, theme, colorScheme, textTheme),
+      _buildBrandingDetailList("4. Papan Harga", papanHargaJson, theme, colorScheme, textTheme),
+      
+      // Pemisah untuk 4 poin baru
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Text("Fasilitas Tambahan:", style: textTheme.titleSmall?.copyWith(color: theme.primaryColor, fontWeight: FontWeight.bold)),
+      ),
+      
+      // 4 Poin Baru ditampilkan dengan helper yang sama (karena sekarang berupa list operator)
+      _buildBrandingDetailList("5. Wall Branding", wallBrandingJson, theme, colorScheme, textTheme),
+      _buildBrandingDetailList("6. Stiker Etalase", stikerEtalaseJson, theme, colorScheme, textTheme),
+      _buildBrandingDetailList("7. Kursi Plastik", kursiPlastikJson, theme, colorScheme, textTheme),
+      _buildBrandingDetailList("8. Akrilik Produk", akrilikProdukJson, theme, colorScheme, textTheme),
+
+      const SizedBox(height: 12),
       _buildBrandingDetailRow("Outlet Full Branding", fullBrandingOperator, theme, colorScheme, textTheme),
-      if (presentaseOutlet != null)
-        _buildPercentageIndicator("Persentase Branding Telkomsel", presentaseOutlet, theme, colorScheme, textTheme),
+      
+      // Kategori Outlet (Hasil Kalkulasi)
+      if (kategoriOutlet != null && kategoriOutlet.isNotEmpty)
+        _buildBrandingDetailRow("Kategori Outlet (Otomatis)", kategoriOutlet, theme, colorScheme, textTheme)
+      else if (presentaseOutlet != null)
+        _buildPercentageIndicator("Persentase Branding Telkomsel (Lama)", presentaseOutlet, theme, colorScheme, textTheme),
       
       const Divider(height: 24),
       Text("Foto Branding:", style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
@@ -450,6 +477,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
     ];
   }
 
+  // Helper untuk menampilkan List Operator (JSON)
   Widget _buildBrandingDetailList(String title, String? jsonString, ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
     List<String> items = [];
     if (jsonString != null && jsonString.isNotEmpty && jsonString != '[]') {
@@ -478,6 +506,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
     );
   }
   
+  // Helper untuk menampilkan String sederhana
   Widget _buildBrandingDetailRow(String label, String? value, ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -488,7 +517,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
           Expanded(
             flex: 3,
             child: Text(
-              (value != null && value.isNotEmpty) ? value : "Tidak Ada",
+              (value != null && value.isNotEmpty) ? value : "Tidak Ada / Tidak Diketahui",
               style: textTheme.bodyLarge?.copyWith(
                 color: (value != null && value.isNotEmpty) ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
               ),
@@ -560,7 +589,6 @@ class _ViewFormPageState extends State<ViewFormPage> {
     );
   }
 
-  // --- [FIXED 3] Nama kunci diubah menjadi 'data_harga_json' saat membaca ---
   List<Widget> _buildHargaSection(Map<String, dynamic> form, ThemeData theme, ColorScheme colorScheme, TextTheme textTheme) {
     final String? dataHargaString = form["data_harga_json"]?.toString();
     List<dynamic> dataHarga = [];

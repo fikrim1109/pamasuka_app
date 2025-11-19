@@ -7,9 +7,9 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:pamasuka/app_theme.dart';
-import 'package:pamasuka/currency_input_formatter.dart'; // Pastikan import ini benar
+import 'package:pamasuka/currency_input_formatter.dart';
 
-// --- Helper Class for Price Entry Controllers (tidak diubah) ---
+// --- Helper Class for Price Entry Controllers ---
 class HargaEntryControllers {
   final TextEditingController namaPaketController;
   final TextEditingController hargaController;
@@ -66,25 +66,42 @@ class _EditFormPageState extends State<EditFormPage> {
   final TextEditingController _displayOutletNamaController = TextEditingController();
   final TextEditingController _displayTanggalController = TextEditingController();
 
-  // State for 'Survei Branding' (tidak diubah)
+  // State for 'Survei Branding'
   String? _existingEtalaseUrl;
   String? _existingDepanUrl;
   File? _newEtalaseFile;
   File? _newDepanFile;
+  
+  // 4 Kategori Lama
   List<String> _posterPromoOperators = [];
   List<String> _layarTokoOperators = [];
   List<String> _shopSignOperators = [];
   List<String> _papanHargaOperators = [];
+  
+  // 4 Kategori Baru (Sekarang Checklist)
+  List<String> _wallBrandingOperators = [];
+  List<String> _stikerEtalaseOperators = [];
+  List<String> _kursiPlastikOperators = [];
+  List<String> _akrilikProdukOperators = [];
+
   String? _fullBrandingOperator;
-  int _telkomselBrandingPercent = 0;
   final List<String> _brandingOperators = ["Telkomsel", "Indosat", "3", "Smartfren", "XL", "Axis"];
+
+  // --- SLIDER KATEGORI OUTLET (OTOMATIS) ---
+  double _kategoriOutletValue = 0; // 0: Tidak ada, 1: Mid, 2: Half, 3: Full
+  final Map<int, String> _kategoriLabels = {
+    0: "Tidak ada",
+    1: "Mid branding",
+    2: "Half branding",
+    3: "Full branding"
+  };
 
   // State for 'Survei Harga'
   List<Map<String, dynamic>> _operatorSurveyGroups = [];
   Map<int, Map<int, HargaEntryControllers>> _hargaEntryControllersMap = {};
   static const List<String> _fixedOperators = ["TELKOMSEL", "XL", "INDOSAT OOREDOO", "AXIS", "SMARTFREN", "3"];
   final List<String> _paketOptions = ["VOUCHER FISIK", "PERDANA INTERNET"];
-  final int _maxEntriesPerGroup = 10; // Batas per grup
+  final int _maxEntriesPerGroup = 10; 
 
   @override
   void initState() {
@@ -111,28 +128,36 @@ class _EditFormPageState extends State<EditFormPage> {
       _existingEtalaseUrl = data['foto_etalase_url']?.toString();
       _existingDepanUrl = data['foto_depan_url']?.toString();
 
-      try {
-        final posterJson = data['poster_promo_json'] as String?;
-        if (posterJson != null && posterJson.isNotEmpty) _posterPromoOperators = List<String>.from(json.decode(posterJson));
+      // Helper untuk parse JSON List
+      List<String> parseList(dynamic jsonStr) {
+        if (jsonStr != null && jsonStr.toString().isNotEmpty && jsonStr.toString() != 'null') {
+          try {
+            return List<String>.from(json.decode(jsonStr.toString()));
+          } catch (e) { return []; }
+        }
+        return [];
+      }
 
-        final layarJson = data['layar_toko_json'] as String?;
-        if (layarJson != null && layarJson.isNotEmpty) _layarTokoOperators = List<String>.from(json.decode(layarJson));
-
-        final shopSignJson = data['shop_sign_json'] as String?;
-        if (shopSignJson != null && shopSignJson.isNotEmpty) _shopSignOperators = List<String>.from(json.decode(shopSignJson));
-
-        final papanHargaJson = data['papan_harga_json'] as String?;
-        if (papanHargaJson != null && papanHargaJson.isNotEmpty) _papanHargaOperators = List<String>.from(json.decode(papanHargaJson));
-      } catch (e) {}
+      _posterPromoOperators = parseList(data['poster_promo_json']);
+      _layarTokoOperators = parseList(data['layar_toko_json']);
+      _shopSignOperators = parseList(data['shop_sign_json']);
+      _papanHargaOperators = parseList(data['papan_harga_json']);
+      
+      // Parse 4 Kategori Baru
+      _wallBrandingOperators = parseList(data['wall_branding']);
+      _stikerEtalaseOperators = parseList(data['stiker_etalase']);
+      _kursiPlastikOperators = parseList(data['kursi_plastik']);
+      _akrilikProdukOperators = parseList(data['akrilik_produk']);
 
       _fullBrandingOperator = data['full_branding_operator'] as String?;
       if (_fullBrandingOperator != null && _fullBrandingOperator!.isEmpty) {
         _fullBrandingOperator = null;
       }
-      _telkomselBrandingPercent = (data['presentase_outlet'] as int?) ?? 0;
+
+      // Hitung kategori outlet berdasarkan data yang sudah diload
+      _calculateBrandingCategory();
 
     } else if (_initialJenisSurvei == 'Survei harga') {
-      // Menggunakan kolom `data_harga_json` yang berisi semua data harga
       _initializeHargaSurveyFromData(data['data_harga_json']?.toString());
     }
 
@@ -143,7 +168,32 @@ class _EditFormPageState extends State<EditFormPage> {
     }
   }
 
-  // --- [FIXED] FUNGSI INI DITULIS ULANG SEPENUHNYA ---
+  // --- LOGIKA OTOMATISASI SLIDER (Sama dengan HomePage) ---
+  void _calculateBrandingCategory() {
+    int telkomselCount = 0;
+    
+    if (_posterPromoOperators.contains("Telkomsel")) telkomselCount++;
+    if (_layarTokoOperators.contains("Telkomsel")) telkomselCount++;
+    if (_shopSignOperators.contains("Telkomsel")) telkomselCount++;
+    if (_papanHargaOperators.contains("Telkomsel")) telkomselCount++;
+    if (_wallBrandingOperators.contains("Telkomsel")) telkomselCount++;
+    if (_stikerEtalaseOperators.contains("Telkomsel")) telkomselCount++;
+    if (_kursiPlastikOperators.contains("Telkomsel")) telkomselCount++;
+    if (_akrilikProdukOperators.contains("Telkomsel")) telkomselCount++;
+
+    setState(() {
+      if (telkomselCount >= 7) {
+        _kategoriOutletValue = 3; // Full
+      } else if (telkomselCount >= 4) {
+        _kategoriOutletValue = 2; // Half
+      } else if (telkomselCount >= 1) {
+        _kategoriOutletValue = 1; // Mid
+      } else {
+        _kategoriOutletValue = 0; // None
+      }
+    });
+  }
+
   void _initializeHargaSurveyFromData(String? jsonDataString) {
     _operatorSurveyGroups = [];
     _hargaEntryControllersMap = {};
@@ -159,7 +209,6 @@ class _EditFormPageState extends State<EditFormPage> {
       }
     }
 
-    // 1. Buat Peta (Map) agar data yang disimpan mudah dicari
     Map<String, List<dynamic>> existingEntriesMap = {};
     for (var item in savedData) {
       if (item is Map<String, dynamic> && item['operator'] != null && item['paket'] != null) {
@@ -169,24 +218,20 @@ class _EditFormPageState extends State<EditFormPage> {
     }
 
     int groupIndex = 0;
-    // 2. Buat struktur form lengkap, sama seperti di halaman Tambah Data
     for (String operatorName in _fixedOperators) {
       for (String paketType in _paketOptions) {
         String key = "$operatorName-$paketType";
-        // Cari data yang sesuai di Peta yang sudah dibuat
         List<dynamic> entriesData = existingEntriesMap[key] ?? [];
 
         _hargaEntryControllersMap[groupIndex] = {};
         _operatorSurveyGroups.add({
           "operator": operatorName,
-          "paket": paketType, // Jenis paket sudah pasti, tidak perlu dropdown
-          "entries": [], // Akan diisi di bawah
-          "isHidden": entriesData.isEmpty, // Sembunyikan jika tidak ada data sama sekali
+          "paket": paketType,
+          "entries": [], 
+          "isHidden": entriesData.isEmpty,
         });
 
-        // 3. Isi form dengan data yang ditemukan atau biarkan kosong
         if (entriesData.isNotEmpty) {
-          // Jika ada data, isi form
           for (int j = 0; j < entriesData.length; j++) {
             var entry = entriesData[j];
             String nama = entry['nama_paket']?.toString() ?? '';
@@ -194,7 +239,6 @@ class _EditFormPageState extends State<EditFormPage> {
             String displayHarga = hargaRaw;
             try {
               if (hargaRaw.isNotEmpty) {
-                // Format harga untuk tampilan (e.g., 25000 -> 25.000)
                 displayHarga = NumberFormat('#,###', 'id_ID').format(int.parse(hargaRaw.replaceAll('.', '')));
               }
             } catch (e) { /* ignore */ }
@@ -204,7 +248,6 @@ class _EditFormPageState extends State<EditFormPage> {
             _hargaEntryControllersMap[groupIndex]![j] = HargaEntryControllers(nama: nama, harga: displayHarga, jumlah: jumlah);
           }
         } else {
-          // Jika tidak ada data, buat satu baris entri kosong
           (_operatorSurveyGroups[groupIndex]["entries"] as List).add({"nama_paket": "", "harga": "", "jumlah": ""});
           _hargaEntryControllersMap[groupIndex]![0] = HargaEntryControllers();
         }
@@ -213,7 +256,6 @@ class _EditFormPageState extends State<EditFormPage> {
     }
     if (mounted) setState(() {});
   }
-
 
   @override
   void dispose() {
@@ -263,7 +305,6 @@ class _EditFormPageState extends State<EditFormPage> {
     }
   }
 
-  // --- [FIXED] Logika pengumpulan data disederhanakan ---
   Future<void> _updateForm() async {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) {
@@ -288,12 +329,20 @@ class _EditFormPageState extends State<EditFormPage> {
         if (_newEtalaseFile != null) request.files.add(await http.MultipartFile.fromPath('foto_etalase', _newEtalaseFile!.path));
         if (_newDepanFile != null) request.files.add(await http.MultipartFile.fromPath('foto_depan', _newDepanFile!.path));
 
+        // Kirim Checklist Lama sebagai JSON
         request.fields['poster_promo'] = json.encode(_posterPromoOperators);
         request.fields['layar_toko'] = json.encode(_layarTokoOperators);
         request.fields['shop_sign'] = json.encode(_shopSignOperators);
         request.fields['papan_harga'] = json.encode(_papanHargaOperators);
+        
+        // Kirim Checklist Baru sebagai JSON
+        request.fields['wall_branding'] = json.encode(_wallBrandingOperators);
+        request.fields['stiker_etalase'] = json.encode(_stikerEtalaseOperators);
+        request.fields['kursi_plastik'] = json.encode(_kursiPlastikOperators);
+        request.fields['akrilik_produk'] = json.encode(_akrilikProdukOperators);
+
         request.fields['full_branding'] = _fullBrandingOperator ?? '';
-        request.fields['presentase_outlet'] = _telkomselBrandingPercent.toString();
+        request.fields['kategori_outlet'] = _kategoriLabels[_kategoriOutletValue.toInt()] ?? "Tidak ada";
 
       } else if (_initialJenisSurvei == 'Survei harga') {
         List<Map<String, dynamic>> finalHargaData = [];
@@ -340,8 +389,8 @@ class _EditFormPageState extends State<EditFormPage> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                Navigator.of(context).pop(true); // Pop Edit page with success result
+                Navigator.of(context).pop(); 
+                Navigator.of(context).pop(true); 
               },
               child: const Text('OK'),
             )
@@ -456,10 +505,21 @@ class _EditFormPageState extends State<EditFormPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildCheckboxSection("Poster Promo", _posterPromoOperators, _brandingOperators, theme),
-            _buildCheckboxSection("Layar Toko", _layarTokoOperators, _brandingOperators, theme),
-            _buildCheckboxSection("Shop Sign", _shopSignOperators, _brandingOperators, theme),
-            _buildCheckboxSection("Papan Harga", _papanHargaOperators, _brandingOperators, theme),
+            _buildCheckboxSection("1. Poster Promo", _posterPromoOperators, _brandingOperators, theme),
+            _buildCheckboxSection("2. Layar Toko", _layarTokoOperators, _brandingOperators, theme),
+            _buildCheckboxSection("3. Shop Sign", _shopSignOperators, _brandingOperators, theme),
+            _buildCheckboxSection("4. Papan Harga", _papanHargaOperators, _brandingOperators, theme),
+            
+            const Divider(height: 30),
+            Text("Fasilitas Tambahan", style: theme.textTheme.titleMedium?.copyWith(color: theme.primaryColor)),
+            const SizedBox(height: 10),
+
+            // 4 Poin Baru (Checklist)
+            _buildCheckboxSection("5. Wall Branding", _wallBrandingOperators, _brandingOperators, theme),
+            _buildCheckboxSection("6. Stiker Etalase", _stikerEtalaseOperators, _brandingOperators, theme),
+            _buildCheckboxSection("7. Kursi Plastik", _kursiPlastikOperators, _brandingOperators, theme),
+            _buildCheckboxSection("8. Akrilik Produk", _akrilikProdukOperators, _brandingOperators, theme),
+
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               value: _fullBrandingOperator,
@@ -469,14 +529,41 @@ class _EditFormPageState extends State<EditFormPage> {
               decoration: const InputDecoration(labelText: 'Outlet Full Branding? (Opsional)'),
             ),
             const SizedBox(height: 24),
-            Text("Persentase Branding Telkomsel", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-            Slider(
-              value: _telkomselBrandingPercent.toDouble(),
-              min: 0,
-              max: 100,
-              divisions: 100,
-              label: "${_telkomselBrandingPercent}%",
-              onChanged: (val) => setState(() => _telkomselBrandingPercent = val.toInt()),
+            
+            // --- SLIDER KATEGORI OUTLET (OTOMATIS) ---
+            Text("Kategori Outlet (Otomatis)", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+            Text("Dihitung dari jumlah checklist Telkomsel.", style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                border: Border.all(color: theme.colorScheme.outline.withOpacity(0.5)),
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.grey.shade100,
+              ),
+              child: Column(
+                children: [
+                   SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      thumbColor: Colors.grey, 
+                      activeTrackColor: Colors.grey,
+                      inactiveTrackColor: Colors.grey.shade300,
+                    ),
+                    child: Slider(
+                      value: _kategoriOutletValue,
+                      min: 0,
+                      max: 3,
+                      divisions: 3,
+                      label: _kategoriLabels[_kategoriOutletValue.toInt()],
+                      onChanged: null, // Disable
+                    ),
+                   ),
+                  Text(
+                    "Status: ${_kategoriLabels[_kategoriOutletValue.toInt()]}",
+                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                  )
+                ],
+              ),
             ),
           ],
         ),
@@ -499,12 +586,14 @@ class _EditFormPageState extends State<EditFormPage> {
               } else {
                 selected.remove(op);
               }
+              // Panggil kalkulasi ulang setiap ada perubahan
+              _calculateBrandingCategory();
             });
           },
           controlAffinity: ListTileControlAffinity.leading,
           dense: true,
         )),
-        const Divider(),
+        const SizedBox(height: 12),
       ],
     );
   }
@@ -555,10 +644,8 @@ class _EditFormPageState extends State<EditFormPage> {
     );
   }
 
-  // --- [FIXED] WIDGET KARTU OPERATOR DISESUAIKAN ---
   Widget _buildOperatorGroupCard(int groupIndex, ThemeData theme) {
     final group = _operatorSurveyGroups[groupIndex];
-    // Judul kartu digabung dari nama operator dan jenis paket
     final String cardTitle = "${group["operator"]} (${group["paket"]})";
     final bool isHidden = group["isHidden"] ?? false;
     final List entries = group["entries"] as List;
@@ -589,7 +676,6 @@ class _EditFormPageState extends State<EditFormPage> {
             ),
             if (!isHidden) ...[
               const Divider(height: 16),
-              // Dropdown jenis paket sudah DIHAPUS
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -634,7 +720,6 @@ class _EditFormPageState extends State<EditFormPage> {
           _hargaEntryControllersMap[groupIndex]?[entryIndex]?.dispose();
           _hargaEntryControllersMap[groupIndex]?.remove(entryIndex);
           entries.removeAt(entryIndex);
-          // Re-index controllers untuk mencegah data salah setelah penghapusan
           Map<int, HargaEntryControllers> updatedControllers = {};
           int currentNewIndex = 0;
           var sortedKeys = _hargaEntryControllersMap[groupIndex]?.keys.toList()?..sort();
