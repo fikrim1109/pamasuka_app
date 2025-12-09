@@ -61,8 +61,8 @@ class _ViewFormPageState extends State<ViewFormPage> {
     }
 
     final url = Uri.https(
-      "android.samalonian.my.id",
-      "/test api/get_survey_forms.php", 
+      "app.samalonian.cloud",
+      "/test_api/get_survey_forms.php", 
       {"outlet_nama": widget.outletName, "user_id": widget.userId.toString()},
     );
 
@@ -188,7 +188,7 @@ class _ViewFormPageState extends State<ViewFormPage> {
     }
     final ThemeData theme = Theme.of(context);
 
-    final url = Uri.https("android.samalonian.my.id", "/test api/delete_survey.php");
+    final url = Uri.https("app.samalonian.cloud", "/test_api/delete_survey.php");
     try {
       final response = await http.post(
         url,

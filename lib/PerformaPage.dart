@@ -61,7 +61,7 @@ class _PerformaPageState extends State<PerformaPage> {
   }
 
   Future<Map<String, dynamic>> _getSurveyData() async {
-    final url = Uri.parse("https://android.samalonian.my.id/test%20api/get_survei_data.php");
+    final url = Uri.parse("https://app.samalonian.cloud/test_api/get_survei_data.php");
     final queryParams = <String, String>{
       "user_id": widget.userId.toString(),
     };

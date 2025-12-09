@@ -92,8 +92,8 @@ class _MenuPageState extends State<MenuPage> with RouteAware {
     });
 
     final url = Uri.https(
-      "android.samalonian.my.id",
-      "/test api/get_user_telkomsel_performance.php",
+      "app.samalonian.cloud",
+      "/test_api/get_user_telkomsel_performance.php",
       {"user_id": widget.userId.toString()},
     );
 

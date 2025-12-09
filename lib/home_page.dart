@@ -39,8 +39,8 @@ class _HomePageState extends State<HomePage> {
   final _formKey = GlobalKey<FormState>();
 
   // URL API
-  final String _submitApiUrl = "https://android.samalonian.my.id/test%20api/submit_survey.php";
-  final String _outletApiUrl = "https://android.samalonian.my.id/test%20api/getAreas.php";
+  final String _submitApiUrl = "https://app.samalonian.cloud/test_api/submit_survey.php";
+  final String _outletApiUrl = "https://app.samalonian.cloud/test_api/getAreas.php";
 
   // Controllers
   final TextEditingController _regionController = TextEditingController();

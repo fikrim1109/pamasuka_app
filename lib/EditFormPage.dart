@@ -55,7 +55,7 @@ class EditFormPage extends StatefulWidget {
 
 class _EditFormPageState extends State<EditFormPage> {
   final _formKey = GlobalKey<FormState>();
-  final String _updateApiUrl = "https://android.samalonian.my.id/test%20api/update_survey.php";
+  final String _updateApiUrl = "https://app.samalonian.cloud/test_api/update_survey.php";
 
   late int _surveyId;
   late String _initialJenisSurvei;

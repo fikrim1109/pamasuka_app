@@ -40,8 +40,8 @@ class _RumahPageState extends State<RumahPage> {
   final _formKey = GlobalKey<FormState>();
 
   // GANTI DENGAN URL API ANDA YANG BENAR
-  final String _submitApiUrl = "https://android.samalonian.my.id/test%20api/submit_survey.php";
-  final String _outletApiUrl = "https://android.samalonian.my.id/test%20api/getAreas.php";
+  final String _submitApiUrl = "https://app.samalonian.cloud/test_api/submit_survey.php";
+  final String _outletApiUrl = "https://app.samalonian.cloud/test_api/getAreas.php";
 
   final TextEditingController _regionController = TextEditingController();
   final TextEditingController _branchController = TextEditingController();

@@ -8,7 +8,7 @@ import "package:pamasuka/lupapage.dart";
 import "package:pamasuka/app_theme.dart"; // Import AppTheme
 import 'package:shared_preferences/shared_preferences.dart'; // Tambahan untuk SharedPrefs
 
-const String _apiBaseUrl = "https://android.samalonian.my.id/test%20api";
+const String _apiBaseUrl = "https://app.samalonian.cloud/test_api/login.php";
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
