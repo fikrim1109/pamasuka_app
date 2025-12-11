@@ -7,7 +7,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:pamasuka/app_theme.dart'; 
-import 'package:pamasuka/currency_input_formatter.dart'; 
+import 'package:pamasuka/currency_input_formatter.dart';
+import 'package:geolocator/geolocator.dart'; 
 
 class HomePage extends StatefulWidget {
   final String username;
@@ -51,6 +52,10 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _namaController = TextEditingController();
   final TextEditingController _tokoController = TextEditingController();
   final TextEditingController _keteranganController = TextEditingController();
+
+  // Location
+  Position? _currentPosition;
+  bool _isGettingLocation = false;
 
   // Outlet Data
   List<Map<String, dynamic>> _outlets = [];
@@ -189,11 +194,69 @@ class _HomePageState extends State<HomePage> {
       
       _fullBrandingOperator = null;
       _kategoriOutletValue = 0;
+      _currentPosition = null;
+      _currentPosition = null;
 
       _tokoController.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
       _namaController.text = widget.username;
     });
     _fetchOutlets();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      _isGettingLocation = true;
+    });
+
+    try {
+      bool serviceEnabled;
+      LocationPermission permission;
+
+      // Test if location services are enabled.
+      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _showStyledSnackBar('Location services are disabled.', isError: true);
+        setState(() {
+          _isGettingLocation = false;
+        });
+        return;
+      }
+
+      permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          _showStyledSnackBar('Location permissions are denied', isError: true);
+          setState(() {
+            _isGettingLocation = false;
+          });
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        _showStyledSnackBar('Location permissions are permanently denied, we cannot request permissions.', isError: true);
+        setState(() {
+          _isGettingLocation = false;
+        });
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      setState(() {
+        _currentPosition = position;
+        _isGettingLocation = false;
+      });
+      _showStyledSnackBar('Lokasi berhasil diambil!', isError: false);
+    } catch (e) {
+      _showStyledSnackBar('Failed to get location: $e', isError: true);
+      setState(() {
+        _isGettingLocation = false;
+      });
+    }
   }
 
   void _initializeFixedSurveyHarga() {
@@ -447,6 +510,10 @@ class _HomePageState extends State<HomePage> {
     request.fields['tanggal_survei'] = _tokoController.text;
     request.fields['jenis_survei'] = _selectedBrandinganOption!;
     request.fields['keterangan_kunjungan'] = _keteranganController.text.trim();
+    if (_currentPosition != null) {
+      request.fields['latitude'] = _currentPosition!.latitude.toString();
+      request.fields['longitude'] = _currentPosition!.longitude.toString();
+    }
 
     if (confirmDuplicate) request.fields['confirm_duplicate'] = 'true';
 
@@ -856,6 +923,48 @@ class _HomePageState extends State<HomePage> {
                                 ),
                                 _buildTextField(controller: _idOutletController, label: 'ID Outlet (Otomatis)', readOnly: true),
                                 _buildTextField(controller: _tokoController, label: 'Tanggal Survei (Otomatis)', readOnly: true),
+                                const SizedBox(height: 16),
+                                
+                                // --- Tombol Ambil Lokasi & Display ---
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    ElevatedButton.icon(
+                                      onPressed: _isGettingLocation || _isSubmitting ? null : _getCurrentLocation,
+                                      icon: _isGettingLocation
+                                          ? SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                            )
+                                          : Icon(Icons.location_on_rounded),
+                                      label: Text('Ambil Lokasi'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text("Koordinat:", style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold)),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            _currentPosition != null
+                                                ? 'Lat: ${_currentPosition!.latitude.toStringAsFixed(5)}\nLon: ${_currentPosition!.longitude.toStringAsFixed(5)}'
+                                                : 'Lokasi belum diambil',
+                                            style: theme.textTheme.bodySmall?.copyWith(color: _currentPosition == null ? theme.colorScheme.error : theme.colorScheme.onSurface),
+                                            softWrap: true,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                                 const SizedBox(height: 16),
 
                                 Text("Detail Survei", style: theme.textTheme.headlineSmall?.copyWith(color: theme.colorScheme.primary)),

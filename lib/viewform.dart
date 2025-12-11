@@ -398,6 +398,50 @@ class _ViewFormPageState extends State<ViewFormPage> {
               const SizedBox(height: 12),
               Text("Keterangan Kunjungan:", style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
               Text(keterangan, style: textTheme.bodyLarge),
+
+              ...() {
+                final latValue = form['latitude'];
+                final lonValue = form['longitude'];
+                
+                // Handle cases where values might be something other than String/double/int
+                final lat = latValue != null && latValue.toString().isNotEmpty ? double.tryParse(latValue.toString()) : null;
+                final lon = lonValue != null && lonValue.toString().isNotEmpty ? double.tryParse(lonValue.toString()) : null;
+
+                if ((lat != null && lat != 0) || (lon != null && lon != 0)) {
+                  return [
+                    const SizedBox(height: 16.0),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2.0),
+                          child: Icon(Icons.location_on_outlined, color: theme.colorScheme.onSurfaceVariant, size: 18.0),
+                        ),
+                        const SizedBox(width: 12.0),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                "Koordinat Survei",
+                                style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 4.0),
+                              Text(
+                                'Lat: ${lat?.toStringAsFixed(5) ?? "Tidak tersedia"}\nLon: ${lon?.toStringAsFixed(5) ?? "Tidak tersedia"}',
+                                style: textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: 1.3),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ];
+                }
+                return [const SizedBox.shrink()];
+              }(),
+
               if (jenisSurvei == "Survei branding") ..._buildBrandingSection(form, theme, colorScheme, textTheme),
               if (jenisSurvei == "Survei harga") ..._buildHargaSection(form, theme, colorScheme, textTheme),
             ],
