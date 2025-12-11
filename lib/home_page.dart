@@ -52,6 +52,7 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _namaController = TextEditingController();
   final TextEditingController _tokoController = TextEditingController();
   final TextEditingController _keteranganController = TextEditingController();
+  final TextEditingController _namaSfController = TextEditingController();
 
   // Location
   Position? _currentPosition;
@@ -123,6 +124,7 @@ class _HomePageState extends State<HomePage> {
     _idOutletController.dispose();
     _hariController.dispose();
     _keteranganController.dispose();
+    _namaSfController.dispose();
     _hargaEntryControllersMap.values.forEach((entryMap) {
       entryMap.values.forEach((controllers) {
         controllers.dispose();
@@ -856,6 +858,7 @@ class _HomePageState extends State<HomePage> {
                                 Text("Informasi Outlet", style: theme.textTheme.headlineSmall?.copyWith(color: theme.colorScheme.primary)),
                                 Divider(height: 24, thickness: theme.dividerTheme.thickness),
                                 
+                                _buildTextField(controller: _namaSfController, label: 'Nama SF', readOnly: true),
                                 _buildTextField(controller: _regionController, label: 'Wilayah', readOnly: true),
                                 _buildTextField(controller: _branchController, label: 'Cabang', readOnly: true),
                                 _buildTextField(controller: _clusterController, label: 'Klaster', readOnly: true),
@@ -911,6 +914,7 @@ class _HomePageState extends State<HomePage> {
                                           _branchController.text = value['branch'] ?? '';
                                           _clusterController.text = value['cluster'] ?? value['area'] ?? '';
                                           _hariController.text = value['hari'] ?? '';
+                                          _namaSfController.text = value['nama_sf'] ?? '';
                                         } else {
                                           _idOutletController.clear();
                                         }
